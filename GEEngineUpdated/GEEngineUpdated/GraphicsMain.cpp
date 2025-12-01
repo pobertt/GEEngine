@@ -150,13 +150,16 @@ public:
 
 	void draw(Core* core, ShaderManager* shaders, Matrix vp) {
 		psos.bind(core, "StaticModel");
-		Matrix planeWorld;
-		//Matrix planeWorld = Matrix();
 
+		// Change 1: Initialize Identity Matrix so the plane isn't collapsed to zero
+		Matrix planeWorld;
 		planeWorld.identity();
 
 		shaders->updateConstantVS("StaticModel", "staticMeshBuffer", "W", &planeWorld);
 		shaders->updateConstantVS("StaticModel", "staticMeshBuffer", "VP", &vp);
+
+		// Change 2: BIND the buffer. Without this, the shader reads garbage/null.
+		shaders->bind(core);
 
 		mesh.draw(core);
 	}

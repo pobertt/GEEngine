@@ -5,7 +5,9 @@ struct PS_INPUT
     float3 Tangent : TANGENT;
     float2 TexCoords : TEXCOORD;
 };
-float4 PS(PS_INPUT input) : SV_Target0
+
+float4 PS(PS_INPUT input) : SV_Target
 {
-    return float4(abs(normalize(input.Normal)) * 0.9f, 1.0);
+    // Return Green (R=0, G=1, B=0, A=1)
+    return float4(0.0f, 1.0f, 0.0f, 1.0f);
 }
