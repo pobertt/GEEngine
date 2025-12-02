@@ -1,44 +1,18 @@
 #pragma once
-
 #include "core.h"
-
-struct STATIC_VERTEX
-{
-	Vec3 pos;
-	Vec3 normal;
-	Vec3 tangent;
-	float tu;
-	float tv;
-};
-
-
-class VertexLayoutCache
-{
-public:
-	static const D3D12_INPUT_LAYOUT_DESC& getStaticLayout() {
-		static const D3D12_INPUT_ELEMENT_DESC inputLayoutStatic[] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-		static const D3D12_INPUT_LAYOUT_DESC desc = { inputLayoutStatic, 4 };
-		return desc;
-	}
-};
+#include "Static_Vertex.h"
 
 class Mesh
 {
 public:
+	// Vertex Buffer
 	ID3D12Resource* vertexBuffer;      // vertex buffer member variable
-	ID3D12Resource* indexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW vbView;   // view member variable
-	D3D12_INPUT_ELEMENT_DESC inputLayout[2];     // Vec3 and colour
+	D3D12_INPUT_ELEMENT_DESC inputLayout[2];     // Vec3 and colour, so 2
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;     // overall description of layout, array of invididual elements
+
+	// Index Buffer
+	ID3D12Resource* indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW ibView;
 	unsigned int numMeshIndices;
 
@@ -60,8 +34,7 @@ public:
 		vbDesc.SampleDesc.Quality = 0;
 		vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		// Create index buffer
-		HRESULT hr;
+		// Create index buffer on the heap
 		D3D12_RESOURCE_DESC ibDesc;
 		memset(&ibDesc, 0, sizeof(D3D12_RESOURCE_DESC));
 		ibDesc.Width = numIndices * sizeof(unsigned int);
@@ -72,6 +45,7 @@ public:
 		ibDesc.SampleDesc.Count = 1;
 		ibDesc.SampleDesc.Quality = 0;
 		ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		HRESULT hr;
 		hr = core->device->CreateCommittedResource(&heapprops, D3D12_HEAP_FLAG_NONE, &ibDesc,
 			D3D12_RESOURCE_STATE_COMMON, NULL, IID_PPV_ARGS(&indexBuffer));
 		core->uploadResource(indexBuffer, indices, numIndices * sizeof(unsigned int),
@@ -83,12 +57,12 @@ public:
 		// Copy vertices using our helper function
 		core->uploadResource(vertexBuffer, vertices, numVertices * vertexSizeInBytes, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-		// Fill in view in helper function
+		// Fill in vertex buffer view in helper function
 		vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
 		vbView.StrideInBytes = vertexSizeInBytes;                         // how big each vertex is
 		vbView.SizeInBytes = numVertices * vertexSizeInBytes;
 
-		// Fill in index buffer view
+		// Fill in index buiffer view in helper function
 		ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 		ibView.Format = DXGI_FORMAT_R32_UINT;
 		ibView.SizeInBytes = numIndices * sizeof(unsigned int);
@@ -106,20 +80,18 @@ public:
 	// Specify type of geometry, where the geometry is (the view), issue command to draw
 	void draw(Core* core)
 	{
-		/* old
-		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		core->getCommandList()->IASetVertexBuffers(0, 1, &vbView);
-		core->getCommandList()->DrawInstanced(3, 1, 0, 0);    // one instance of three vertices
-		*/
-
 		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		core->getCommandList()->IASetVertexBuffers(0, 1, &vbView);
 		core->getCommandList()->IASetIndexBuffer(&ibView);
 		core->getCommandList()->DrawIndexedInstanced(numMeshIndices, 1, 0, 0, 0);
 	}
 
-	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices) {
+
+	// Overload function
+	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices)
+	{
 		init(core, &vertices[0], sizeof(STATIC_VERTEX), vertices.size(), &indices[0], indices.size());
 		inputLayoutDesc = VertexLayoutCache::getStaticLayout();
 	}
+
 };

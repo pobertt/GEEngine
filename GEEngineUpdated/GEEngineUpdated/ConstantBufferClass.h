@@ -1,7 +1,5 @@
 #pragma once
-
 #include "core.h"
-#include "maths.h"
 
 struct ConstantBufferVariable
 {
@@ -9,22 +7,35 @@ struct ConstantBufferVariable
 	unsigned int size;
 };
 
-class ConstantBuffer
+class ConstantBufferClass
 {
-public:
 	ID3D12Resource* constantBuffer;
+
+	//CPU - mapped pointer
 	unsigned char* buffer;
+	
+	// size of a single CB entry (aligned to 256)
 	unsigned int cbSizeInBytes;
-	std::string name;
-	std::map<std::string, ConstantBufferVariable> constantBufferData;
+
+	// capacity (# of instances / draw calls)
 	unsigned int maxDrawCalls;
-	unsigned int numInstances;
+
+	// current index in ring buffer
 	unsigned int offsetIndex;
 
+	// number of instances actually requested (alias for clarity)
+	unsigned int numInstances = 0;
+
+public:
+
+	std::string name;
+	std::map<std::string, ConstantBufferVariable> constantBufferData;
+
+	// initialises the constant buffer
 	void init(Core* core, unsigned int sizeInBytes, unsigned int _maxDrawCalls = 1024)
 	{
-		maxDrawCalls = _maxDrawCalls;
 		cbSizeInBytes = (sizeInBytes + 255) & ~255;
+		maxDrawCalls = _maxDrawCalls;
 		unsigned int cbSizeInBytesAligned = cbSizeInBytes * maxDrawCalls;
 		numInstances = _maxDrawCalls;
 		offsetIndex = 0;
@@ -47,6 +58,7 @@ public:
 		constantBuffer->Map(0, NULL, (void**)&buffer);
 	}
 
+	// Update via a memcpy
 	void update(std::string name, void* data)
 	{
 		ConstantBufferVariable cbVariable = constantBufferData[name];
@@ -54,6 +66,8 @@ public:
 		memcpy(&buffer[offset + cbVariable.offset], data, cbVariable.size);
 	}
 
+
+	// GPU address of contents
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUAddress() const
 	{
 		return (constantBuffer->GetGPUVirtualAddress() + (offsetIndex * cbSizeInBytes));
@@ -67,5 +81,4 @@ public:
 			offsetIndex = 0;
 		}
 	}
-
 };

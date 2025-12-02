@@ -225,13 +225,13 @@ public:
 
 
 // Outside Vector class
-float Dot(const Vec3& pVec1, const Vec3& pVec2)   // dot product between two input vectors
+inline float Dot(const Vec3& pVec1, const Vec3& pVec2)   // dot product between two input vectors
 {
 	return pVec1.x * pVec2.x + pVec1.y * pVec2.y + pVec1.z * pVec2.z;
 }
 
 // Outside Vector class
-float Cross(const Vec3& pVec1, const Vec3& pVec2)    // cross product between two input vectors
+inline float Cross(const Vec3& pVec1, const Vec3& pVec2)    // cross product between two input vectors
 {
 	return (pVec1.v[1] * pVec2.v[2] - pVec1.v[2] * pVec2.v[1],
 		pVec1.v[2] * pVec2.v[0] - pVec1.v[0] * pVec2.v[2],
@@ -364,7 +364,7 @@ public:
 			v[0] / val, 
 			v[1] / val, 
 			v[2] / val, 
-			v[3] * val
+			v[3] / val
 		);
 	}
 
@@ -469,20 +469,6 @@ public:
 		m[4] = m4; m[5] = m5; m[6] = m6; m[7] = m7;
 		m[8] = m8; m[9] = m9; m[10] = m10; m[11] = m11;
 		m[12] = m12; m[13] = m13; m[14] = m14; m[15] = m15;
-	}
-
-	void identity() {
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				if (j == i) {
-					a[i][j] = 1;
-
-				}
-				else {
-					a[i][j] = 0;
-				}
-			}
-		}
 	}
 
 
@@ -648,7 +634,7 @@ public:
 	Matrix perspectiveProjection(float _aspect, float _fov, float _near, float _far)
 	{
 		Matrix m;
-		float tanHalfFov = tan(_fov / 2.0f);
+		float tanHalfFov = tan((_fov / 180.0f) * M_PI / 2.0f);
 		m.m[0] = 1.0f / (_aspect * tanHalfFov);
 		m.m[5] = 1.0f / tanHalfFov;
 		m.m[10] = _far / (_far - _near);
@@ -658,7 +644,7 @@ public:
 		return m;
 	} 
 
-	Matrix lookAtMatrix(const Vec3& _to, const Vec3& _from, const Vec3& _up)
+	Matrix lookAtMatrix(const Vec3& _from, const Vec3& _to, const Vec3& _up)
 	{
 		Matrix m;
 		Vec3 direction = (_to - _from).normalize();

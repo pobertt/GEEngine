@@ -86,14 +86,6 @@ public:
 
 	void bind(Core* core, std::string name)
 	{
-		// --- ADD THIS SAFETY CHECK ---
-		if (psos.find(name) == psos.end() || psos[name] == nullptr) {
-			// If we are here, the shader compilation failed earlier.
-			// We return to avoid crashing the driver.
-			return;
-		}
-		// -----------------------------
-
 		core->getCommandList()->SetPipelineState(psos[name]);
 	}
 

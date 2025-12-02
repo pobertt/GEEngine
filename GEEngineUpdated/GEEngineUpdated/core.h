@@ -8,6 +8,7 @@
 #pragma comment(lib, "dxgi")              // libraries
 #pragma comment(lib, "d3dcompiler.lib")    // libraries
 
+
 // pass in a resource, what state it comes in as, what state it goes to
 class Barrier
 {
@@ -23,6 +24,7 @@ public:
 		commandList->ResourceBarrier(1, &rb);
 	}
 };
+
 
 class GPUFence 
 {
@@ -91,13 +93,14 @@ public:
 	// Root signature
 	ID3D12RootSignature* rootSignature;
 
+
 	void init(HWND hwnd, int _width, int _height)     // handle to window and width and height of window
 	{
 		ID3D12Debug1* debug;
 		D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
 		debug->EnableDebugLayer();
 		debug->Release();
-
+	
 		// Enumerate adapters
 		IDXGIAdapter1* adapterf;
 		std::vector<IDXGIAdapter1*> adapters;            // stores all adapters on the system
@@ -244,8 +247,6 @@ public:
 		scissorRect.top = 0;
 		scissorRect.right = _width;
 		scissorRect.bottom = _height;
-		
-		// Updae Root Signature
 
 		std::vector<D3D12_ROOT_PARAMETER> parameters;
 		D3D12_ROOT_PARAMETER rootParameterCBVS;
@@ -262,6 +263,7 @@ public:
 		rootParameterCBPS.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		parameters.push_back(rootParameterCBPS);
 
+		// Update Root Signature description
 		D3D12_ROOT_SIGNATURE_DESC desc = {};
 		desc.NumParameters = parameters.size();
 		desc.pParameters = &parameters[0];
@@ -315,7 +317,7 @@ public:
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewHandle = backbufferHeap -> GetCPUDescriptorHandleForHeapStart();
 		unsigned int renderTargetViewDescriptorSize = device -> GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		renderTargetViewHandle.ptr += frameIndex * renderTargetViewDescriptorSize;
-
+		resetCommandList();
 		Barrier::add(backbuffers[frameIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET, getCommandList());
 		getCommandList()->OMSetRenderTargets(1, &renderTargetViewHandle, FALSE, &dsvHandle);
 		float color[4];                    // colour of screen, currently blue
@@ -385,6 +387,7 @@ public:
 		flushGraphicsQueue();   // wait for command to finish
 
 		uploadBuffer->Release();  //  release upload heap memory
+
 	}
 
 	// Functionality to set common draw functionality
@@ -395,11 +398,13 @@ public:
 		getCommandList()->SetGraphicsRootSignature(rootSignature);
 	}
 
+
 	// Frame index
 	int frameIndex()
 	{
 		return swapchain->GetCurrentBackBufferIndex();
 	}
+
 };
 
 

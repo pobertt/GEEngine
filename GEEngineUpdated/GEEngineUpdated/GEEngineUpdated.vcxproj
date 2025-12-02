@@ -123,18 +123,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ConstantBuffer.h" />
+    <ClInclude Include="ConstantBufferClass.h" />
     <ClInclude Include="core.h" />
     <ClInclude Include="GamesEngineeringBase.h" />
     <ClInclude Include="maths.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="PipeLineState.h" />
+    <ClInclude Include="Plane.h" />
+    <ClInclude Include="Prim_Vertex.h" />
+    <ClInclude Include="ScreenSpaceTriangle.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="ShaderManager.h" />
+    <ClInclude Include="Static_Vertex.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GraphicsMain.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,108 +1,110 @@
 #pragma once
+#include "ConstantBufferClass.h"
+#include <fstream>
+#include <sstream>
 
-#include "core.h"
-#include "ConstantBuffer.h"
 
-
-class Shader {
+class Shader
+{
 public:
-	ID3D12ShaderReflection* vsReflection;
-	ID3D12ShaderReflection* psReflection;
-	std::vector<ConstantBuffer*> vsConstantBuffers;
-	std::vector<ConstantBuffer*> psConstantBuffers;
 
-	void init(Core* core, ID3DBlob* vsShader, ID3DBlob* psShader) {
-		// --- 1. Vertex Shader Reflection ---
-		if (!vsShader) {
-			OutputDebugStringA("Error: VS Blob is null in Shader::init\n");
-			return;
-		}
+	// Vertex and pixel shader - member variables
+	ID3DBlob* vertexShader;
+	ID3DBlob* pixelShader;
 
-		HRESULT hr = D3DReflect(vsShader->GetBufferPointer(), vsShader->GetBufferSize(), IID_PPV_ARGS(&vsReflection));
+	std::vector<ConstantBufferClass *> vsConstantBuffers;
+	std::vector<ConstantBufferClass *> psConstantBuffers;
 
-		if (FAILED(hr)) {
-			// Usually caused by missing dxguid.lib or incompatible shader version
-			char buffer[256];
-			sprintf_s(buffer, "Error: D3DReflect (VS) failed. HRESULT: 0x%X\n", hr);
-			OutputDebugStringA(buffer);
-			return; // Stop here to prevent crash
-		}
+	// Function to read in a file
+	string ReadFile(string filename)
+	{
+		std::ifstream file(filename);
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		return buffer.str();
+	}
 
-		D3D12_SHADER_DESC desc;
-		vsReflection->GetDesc(&desc);
+	// pass in shaders by filename
+	void LoadShaders(const std::string& vsName, const std::string& psName)
+	{
+		// Compile Vertex shader
+		std::string vsSource = ReadFile(vsName);
 
-		for (unsigned int i = 0; i < desc.ConstantBuffers; i++)
+		ID3DBlob* status;
+		HRESULT hr = D3DCompile(vsSource.c_str(), strlen(vsSource.c_str()), NULL,
+			NULL, NULL, "VS", "vs_5_0", 0, 0, &vertexShader, &status);
+
+		// CHeck if vertex shader compiles
+		if (FAILED(hr))
 		{
-			auto* buffer = new ConstantBuffer();
-			ID3D12ShaderReflectionConstantBuffer* cbReflection = vsReflection->GetConstantBufferByIndex(i);
+			if (status)
+				OutputDebugStringA((char*)status->GetBufferPointer());
+		}
+
+		// Compile pixel shader
+		std::string psSource = ReadFile(psName);
+
+		hr = D3DCompile(psSource.c_str(), strlen(psSource.c_str()), NULL, NULL,
+			NULL, "PS", "ps_5_0", 0, 0, &pixelShader, &status);
+
+		// CHeck if pixel shader compiles
+		if (FAILED(hr))
+		{
+			if (status)
+				OutputDebugStringA((char*)status->GetBufferPointer());
+		}
+	}
+
+	void ReflectShaders(Core *core, ID3DBlob* shader, bool isVS)
+	{
+		ID3D12ShaderReflection* reflection;
+		D3DReflect(shader->GetBufferPointer(), shader->GetBufferSize(), IID_PPV_ARGS(&reflection));
+		D3D12_SHADER_DESC desc;
+		reflection->GetDesc(&desc);
+
+		for (int i = 0; i < desc.ConstantBuffers; i++)
+		{
+			ConstantBufferClass *buffer = new ConstantBufferClass();
+			ID3D12ShaderReflectionConstantBuffer* constantBuffer = reflection->GetConstantBufferByIndex(i);
 			D3D12_SHADER_BUFFER_DESC cbDesc;
-			cbReflection->GetDesc(&cbDesc);
-
+			constantBuffer->GetDesc(&cbDesc);
 			buffer->name = cbDesc.Name;
+			unsigned int totalSize = 0;
 
-			for (unsigned int j = 0; j < cbDesc.Variables; j++)
+			for (int j = 0; j < cbDesc.Variables; j++)
 			{
-				ID3D12ShaderReflectionVariable* var = cbReflection->GetVariableByIndex(j);
+				ID3D12ShaderReflectionVariable* var = constantBuffer->GetVariableByIndex(j);
 				D3D12_SHADER_VARIABLE_DESC vDesc;
 				var->GetDesc(&vDesc);
-
 				ConstantBufferVariable bufferVariable;
 				bufferVariable.offset = vDesc.StartOffset;
 				bufferVariable.size = vDesc.Size;
-				buffer->constantBufferData[vDesc.Name] = bufferVariable;
+				buffer->constantBufferData.insert({ vDesc.Name, bufferVariable });
+				totalSize += bufferVariable.size;
 			}
-
-			buffer->init(core, cbDesc.Size);
-			vsConstantBuffers.push_back(buffer);
-		}
-
-		// --- 2. Pixel Shader Reflection ---
-		if (psShader) {
-			hr = D3DReflect(psShader->GetBufferPointer(), psShader->GetBufferSize(), IID_PPV_ARGS(&psReflection));
-
-			if (FAILED(hr)) {
-				OutputDebugStringA("Warning: D3DReflect (PS) failed. Skipping PS reflection.\n");
+			buffer->init(core, totalSize, 1024);
+			if (isVS)
+			{
+				vsConstantBuffers.push_back(buffer);
 			}
-			else {
-				psReflection->GetDesc(&desc);
-				for (unsigned int i = 0; i < desc.ConstantBuffers; i++)
-				{
-					auto* buffer = new ConstantBuffer();
-					ID3D12ShaderReflectionConstantBuffer* cbReflection = psReflection->GetConstantBufferByIndex(i);
-					D3D12_SHADER_BUFFER_DESC cbDesc;
-					cbReflection->GetDesc(&cbDesc);
-					buffer->name = cbDesc.Name;
-					for (unsigned int j = 0; j < cbDesc.Variables; j++)
-					{
-						ID3D12ShaderReflectionVariable* var = cbReflection->GetVariableByIndex(j);
-						D3D12_SHADER_VARIABLE_DESC vDesc;
-						var->GetDesc(&vDesc);
-						ConstantBufferVariable val = { vDesc.StartOffset, vDesc.Size };
-						buffer->constantBufferData[vDesc.Name] = val;
-					}
-					buffer->init(core, cbDesc.Size);
-					psConstantBuffers.push_back(buffer);
-				}
+			else
+			{
+				psConstantBuffers.push_back(buffer);
 			}
 		}
+		reflection->Release();
 	}
 
 	void apply(Core* core)
 	{
-		// Vertex Shader Buffers
 		for (int i = 0; i < vsConstantBuffers.size(); i++)
 		{
-			// Use '->' because vsConstantBuffers[i] is a pointer
-			core->getCommandList()->SetGraphicsRootConstantBufferView(i, vsConstantBuffers[i]->getGPUAddress());
+			core->getCommandList()->SetGraphicsRootConstantBufferView(0, vsConstantBuffers[i]->getGPUAddress());
 			vsConstantBuffers[i]->next();
 		}
 
-		// Pixel Shader Buffers
 		for (int i = 0; i < psConstantBuffers.size(); i++)
 		{
-			// Use '->' here as well
-			// Note: This hardcodes index 1. If you have multiple PS buffers, they might overwrite each other.
-			// For this specific task (StaticModel), it is fine.
 			core->getCommandList()->SetGraphicsRootConstantBufferView(1, psConstantBuffers[i]->getGPUAddress());
 			psConstantBuffers[i]->next();
 		}
