@@ -8,6 +8,8 @@
 #include "ConstantBufferClass.h"
 #include "Shader.h"
 #include "Plane.h"
+#include "Cube.h"
+#include "Sphere.h"
 
 using namespace std;
 
@@ -25,6 +27,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	// Create instance of plane
 	Plane planeDraw;
 
+	//Create instance of a cube
+	Cube cube;
+	Cube cube2;
+
+	//Create instance of a sphere
+	Sphere SkyBox;
+
 	// Creates a window
 	win.initialize("My Window", 1024, 1024); 
 
@@ -32,10 +41,19 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	core.init(win.hwnd, 1024, 1024);           
 
 	// Initialises the plane/cube/sphere
-	planeDraw.init(&core);
+	//planeDraw.init(&core);
+	cube.init(&core);
+	cube2.init(&core);
+	SkyBox.init(&core, 32, 32, 100);
 	
 	// World matrix
 	Matrix matrixWorld;
+	Matrix matrixWorld2;
+	Matrix SkyBoxMatrix;
+
+	SkyBoxMatrix.translation(Vec3(0, 2, 0));
+
+	matrixWorld2.translation(Vec3(5, 0, 0));
 
 	float t = 0;
 
@@ -73,7 +91,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		// Updates the GPU constant buffer and issues the draw call.
 		// The CPU - side buffer is copied to the GPU constant buffer
-		planeDraw.draw(&core, matrixWorld, vp);
+		//planeDraw.draw(&core, matrixWorld, vp);
+		SkyBox.draw(&core, SkyBoxMatrix, vp);
+		cube.draw(&core, matrixWorld, vp);
+		cube2.draw(&core, matrixWorld2, vp);
+		
 
 		// finished rendering
 		core.finishFrame();             
@@ -85,3 +107,4 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	return 0;
 }
 
+// Screen shake - changing FOV basically changing something to 5 3 4 1 2 (shaking the screen basically)
