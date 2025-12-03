@@ -1,6 +1,7 @@
 #pragma once
 #include "core.h"
 #include "Static_Vertex.h"
+#include "GEMLoader.h"
 
 class Mesh
 {
@@ -94,4 +95,34 @@ public:
 		inputLayoutDesc = VertexLayoutCache::getStaticLayout();
 	}
 
+};
+
+class StaticMesh {
+public:
+	std::vector<Mesh*> meshes;
+
+	void init(Core* core, std::string filename) {
+		GEMLoader::GEMModelLoader loader;
+		std::vector<GEMLoader::GEMMesh> gemmeshes;
+		loader.load(filename, gemmeshes);
+		for (int i = 0; i < gemmeshes.size(); i++) {
+			Mesh* mesh = new Mesh();
+			std::vector<STATIC_VERTEX> vertices;
+			for (int j = 0; j < gemmeshes[i].verticesStatic.size(); j++) {
+				STATIC_VERTEX v;
+				memcpy(&v, &gemmeshes[i].verticesStatic[j], sizeof(STATIC_VERTEX));
+				vertices.push_back(v);
+			}
+			mesh->init(core, vertices, gemmeshes[i].indices);
+			meshes.push_back(mesh);
+		}
+	}
+
+	void draw(Core* core)
+	{
+		for (int i = 0; i < meshes.size(); i++)
+		{
+			meshes[i]->draw(core);
+		}
+	}
 };

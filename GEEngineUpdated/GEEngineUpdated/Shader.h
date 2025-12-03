@@ -47,7 +47,7 @@ public:
 		hr = D3DCompile(psSource.c_str(), strlen(psSource.c_str()), NULL, NULL,
 			NULL, "PS", "ps_5_0", 0, 0, &pixelShader, &status);
 
-		// CHeck if pixel shader compiles
+		// Check if pixel shader compiles
 		if (FAILED(hr))
 		{
 			if (status)
@@ -55,6 +55,7 @@ public:
 		}
 	}
 
+	// Reflect shader to get constant buffer information
 	void ReflectShaders(Core *core, ID3DBlob* shader, bool isVS)
 	{
 		ID3D12ShaderReflection* reflection;
@@ -95,6 +96,7 @@ public:
 		reflection->Release();
 	}
 
+	// Apply constant buffers to pipeline
 	void apply(Core* core)
 	{
 		for (int i = 0; i < vsConstantBuffers.size(); i++)

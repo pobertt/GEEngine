@@ -10,6 +10,7 @@
 #include "Plane.h"
 #include "Cube.h"
 #include "Sphere.h"
+#include "Tree.h"
 
 using namespace std;
 
@@ -34,6 +35,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	//Create instance of a sphere
 	Sphere SkyBox;
 
+	//Create instance of static mesh
+	Tree tree;
+
+
 	// Creates a window
 	win.initialize("My Window", 1024, 1024); 
 
@@ -42,9 +47,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	// Initialises the plane/cube/sphere
 	//planeDraw.init(&core);
-	cube.init(&core);
-	cube2.init(&core);
+	//cube.init(&core);
+	//cube2.init(&core);
 	SkyBox.init(&core, 32, 32, 100);
+
+	tree.init(&core);
 	
 	// World matrix
 	Matrix matrixWorld;
@@ -54,6 +61,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	SkyBoxMatrix.translation(Vec3(0, 2, 0));
 
 	matrixWorld2.translation(Vec3(5, 0, 0));
+	matrixWorld2.scaling(Vec3(0.5, 0.5, 0.5));
 
 	float t = 0;
 
@@ -93,8 +101,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// The CPU - side buffer is copied to the GPU constant buffer
 		//planeDraw.draw(&core, matrixWorld, vp);
 		SkyBox.draw(&core, SkyBoxMatrix, vp);
-		cube.draw(&core, matrixWorld, vp);
-		cube2.draw(&core, matrixWorld2, vp);
+		//cube.draw(&core, matrixWorld, vp);
+		//cube2.draw(&core, matrixWorld2, vp);
+		matrixWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		tree.draw(&core, matrixWorld, vp);
 		
 
 		// finished rendering
