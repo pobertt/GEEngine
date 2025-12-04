@@ -1,7 +1,21 @@
 #pragma once
 #include "core.h"
 #include "Static_Vertex.h"
+#include "Animation.h"
+#include "Shader.h"
 #include "GEMLoader.h"
+#include "PipeLineState.h"
+
+struct ANIMATED_VERTEX
+{
+	Vec3 pos;
+	Vec3 normal;
+	Vec3 tangent;
+	float tu;
+	float tv;
+	unsigned int bonesIDs[4];
+	float boneWeights[4];
+};
 
 class Mesh
 {
@@ -9,7 +23,7 @@ public:
 	// Vertex Buffer
 	ID3D12Resource* vertexBuffer;      // vertex buffer member variable
 	D3D12_VERTEX_BUFFER_VIEW vbView;   // view member variable
-	D3D12_INPUT_ELEMENT_DESC inputLayout[2];     // Vec3 and colour, so 2
+	std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout; // Flexible storage
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;     // overall description of layout, array of invididual elements
 
 	// Index Buffer
@@ -19,6 +33,12 @@ public:
 
 	void init(Core* core, void* vertices, int vertexSizeInBytes, int numVertices, unsigned int* indices, int numIndices)   // number of bytes per vertex and number of vertices
 	{
+		// Defensive checks
+		if (!core || (!vertices && numVertices > 0) || (!indices && numIndices > 0) || numVertices < 0 || numIndices < 0) {
+			OutputDebugStringA("Mesh::init - invalid parameters\n");
+			return;
+		}
+
 		D3D12_HEAP_PROPERTIES heapprops = {};
 		heapprops.Type = D3D12_HEAP_TYPE_DEFAULT;
 		heapprops.CreationNodeMask = 1;                  // only one GPU
@@ -49,6 +69,10 @@ public:
 		HRESULT hr;
 		hr = core->device->CreateCommittedResource(&heapprops, D3D12_HEAP_FLAG_NONE, &ibDesc,
 			D3D12_RESOURCE_STATE_COMMON, NULL, IID_PPV_ARGS(&indexBuffer));
+		if (FAILED(hr)) {
+			OutputDebugStringA("CreateCommittedResource (index) failed\n");
+			return;
+		}
 		core->uploadResource(indexBuffer, indices, numIndices * sizeof(unsigned int),
 			D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
@@ -69,11 +93,13 @@ public:
 		ibView.SizeInBytes = numIndices * sizeof(unsigned int);
 		numMeshIndices = numIndices;
 
-		// Fill in layout
-		inputLayout[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-		inputLayout[1] = { "COLOUR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-		inputLayoutDesc.NumElements = 2;
-		inputLayoutDesc.pInputElementDescs = inputLayout;
+		// Fill in layout (safe initialization)
+		inputLayout = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "COLOUR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+		inputLayoutDesc.NumElements = static_cast<UINT>(inputLayout.size());
+		inputLayoutDesc.pInputElementDescs = inputLayout.data();
 	}
 
 	// WHAT TO DRAW
@@ -92,9 +118,32 @@ public:
 	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices)
 	{
 		init(core, &vertices[0], sizeof(STATIC_VERTEX), vertices.size(), &indices[0], indices.size());
-		inputLayoutDesc = VertexLayoutCache::getStaticLayout();
+		inputLayout = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "COLOUR",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+
+		inputLayoutDesc.NumElements = (UINT)inputLayout.size();
+		inputLayoutDesc.pInputElementDescs = inputLayout.data();
 	}
 
+	void init(Core* core, std::vector<ANIMATED_VERTEX> vertices, std::vector<unsigned int> indices) {
+		// Call base init to setup buffers (it will set up default layout, but we overwrite it below)
+		init(core, &vertices[0], sizeof(ANIMATED_VERTEX), static_cast<int>(vertices.size()), &indices[0], static_cast<int>(indices.size()));
+
+		// OVERWRITE LAYOUT with Animated Format
+		inputLayout = {
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BONEIDS",  0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "WEIGHTS",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 60, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+
+		inputLayoutDesc.NumElements = (UINT)inputLayout.size();
+		inputLayoutDesc.pInputElementDescs = inputLayout.data(); // Safe pointer
+	}
 };
 
 class StaticMesh {
@@ -105,6 +154,7 @@ public:
 		GEMLoader::GEMModelLoader loader;
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		loader.load(filename, gemmeshes);
+
 		for (int i = 0; i < gemmeshes.size(); i++) {
 			Mesh* mesh = new Mesh();
 			std::vector<STATIC_VERTEX> vertices;
@@ -120,6 +170,126 @@ public:
 
 	void draw(Core* core)
 	{
+		for (int i = 0; i < meshes.size(); i++)
+		{
+			meshes[i]->draw(core);
+		}
+	}
+};
+
+class AnimatedModel
+{
+public:
+	std::vector<Mesh*> meshes;
+	Animation animation;
+	std::vector<std::string> textureFilenames;
+	Shader shader;
+	PSOManager psos;
+	void init(Core* core, std::string filename)
+	{
+		GEMLoader::GEMModelLoader loader;
+		std::vector<GEMLoader::GEMMesh> gemmeshes;
+		GEMLoader::GEMAnimation gemanimation;
+		loader.load(filename, gemmeshes, gemanimation);
+
+		// --- SAFETY CHECK 1: File Loading Failed ---
+		if (gemmeshes.empty()) {
+			OutputDebugStringA(("Error: No meshes found in " + filename + "\n").c_str());
+			return;
+		}
+
+		for (int i = 0; i < gemmeshes.size(); i++)
+		{
+			// --- FIX START: Skip empty meshes ---
+			if (gemmeshes[i].verticesAnimated.size() == 0) {
+				continue; // Skip this mesh to avoid crashing on &vertices[0]
+			}
+			// --- FIX END ---
+			Mesh* mesh = new Mesh();
+			std::vector<ANIMATED_VERTEX> vertices;
+			for (int j = 0; j < gemmeshes[i].verticesAnimated.size(); j++)
+			{
+				ANIMATED_VERTEX v;
+				memcpy(&v, &gemmeshes[i].verticesAnimated[j], sizeof(ANIMATED_VERTEX));
+				vertices.push_back(v);
+			}
+			mesh->init(core, vertices, gemmeshes[i].indices);
+			meshes.push_back(mesh);
+		}
+
+		// --- FIX START: Check if valid meshes exist before using meshes[0] ---
+		if (meshes.empty()) {
+			OutputDebugStringA("Error: All loaded meshes were empty or invalid.\n");
+			return;
+		}
+		// --- FIX END ---
+
+		// Load Shaders (Ensure these files exist in your executable folder!)
+		shader.LoadShaders("VSAnim.hlsl", "PSUntextured.hlsl");
+
+		if (!shader.vertexShader || !shader.pixelShader) {
+			OutputDebugStringA("CRITICAL ERROR: Animation Shaders failed to compile/load.\n");
+			return; // Stop here!
+		}
+
+		// Reflect shaders
+		shader.ReflectShaders(core, shader.pixelShader, false);
+		shader.ReflectShaders(core, shader.vertexShader, true);
+
+		// Create PSO (Safe access now)
+		psos.createPSO(
+			core,
+			"AnimatedModelPSO",
+			shader.vertexShader,
+			shader.pixelShader,
+			meshes[0]->inputLayoutDesc
+		);
+
+		memcpy(&animation.skeleton.globalInverse, &gemanimation.globalInverse, 16 * sizeof(float));
+		for (int i = 0; i < gemanimation.bones.size(); i++)
+		{
+			Bone bone;
+			bone.name = gemanimation.bones[i].name;
+			memcpy(&bone.offset, &gemanimation.bones[i].offset, 16 * sizeof(float));
+			bone.parentIndex = gemanimation.bones[i].parentIndex;
+			animation.skeleton.bones.push_back(bone);
+		}
+		for (int i = 0; i < gemanimation.animations.size(); i++)
+		{
+			std::string name = gemanimation.animations[i].name;
+			AnimationSequence aseq;
+			aseq.ticksPerSecond = gemanimation.animations[i].ticksPerSecond;
+			for (int j = 0; j < gemanimation.animations[i].frames.size(); j++)
+			{
+				AnimationFrame frame;
+				for (int index = 0; index < gemanimation.animations[i].frames[j].positions.size(); index++)
+				{
+					Vec3 p;
+					Quaternion q;
+					Vec3 s;
+					memcpy(&p, &gemanimation.animations[i].frames[j].positions[index], sizeof(Vec3));
+					frame.positions.push_back(p);
+					memcpy(&q, &gemanimation.animations[i].frames[j].rotations[index], sizeof(Quaternion));
+					frame.rotations.push_back(q);
+					memcpy(&s, &gemanimation.animations[i].frames[j].scales[index], sizeof(Vec3));
+					frame.scales.push_back(s);
+				}
+				aseq.frames.push_back(frame);
+			}
+			animation.animations.insert({ name, aseq });
+		}
+	}
+	void updateWorld(Matrix& w)
+	{
+		shader.vsConstantBuffers[0]->update("W", &w);
+	}
+	void draw(Core* core, AnimationInstance* instance, Matrix& vp, Matrix& w)
+	{
+		psos.bind(core, "AnimatedModelPSO");
+		shader.vsConstantBuffers[0]->update("W", &w);
+		shader.vsConstantBuffers[0]->update("VP", &vp);
+		shader.vsConstantBuffers[0]->update("bones", instance->matrices);
+		shader.apply(core);
 		for (int i = 0; i < meshes.size(); i++)
 		{
 			meshes[i]->draw(core);

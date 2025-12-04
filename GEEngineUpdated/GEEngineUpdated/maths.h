@@ -724,6 +724,9 @@ public:
 		float q[4];       // union allows array style access
 	};
 
+	// Default constructor (identity quaternion)
+	Quaternion() : a(0), b(0), c(0), d(1) {}
+
 	// Standard Constructor to initialise the quaternion components
 	Quaternion(float x, float y, float z, float w)
 	{
@@ -770,7 +773,7 @@ public:
 		return Quaternion{ -a, -b, -c, -d };
 	}
 
-	Quaternion Slerp(Quaternion q1, Quaternion q2, float time)     // slerp between two input quaternions over input time
+	static Quaternion Slerp(Quaternion q1, Quaternion q2, float time)     // slerp between two input quaternions over input time
 	{
 		// finds dot product between two quaternions
 		float dotProduct = q1.a * q2.a + q1.b * q2.b + q1.c * q2.c + q1.d * q2.d;
@@ -1015,3 +1018,11 @@ t simpleInterpolateAttribute(t a0, t a1, t a2, float alpha, float beta, float ga
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
+
+// Add operator* overloads for Matrix multiplication
+
+// Matrix * Matrix
+inline Matrix operator*(const Matrix& lhs, const Matrix& rhs)
+{
+    return lhs.multiply(rhs);
+}

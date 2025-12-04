@@ -84,9 +84,13 @@ public:
 
 	}
 
-	void bind(Core* core, std::string name)
-	{
-		core->getCommandList()->SetPipelineState(psos[name]);
+	void bind(Core* core, const std::string& name) {
+		auto it = psos.find(name);
+		if (it == psos.end() || it->second == nullptr) {
+			OutputDebugStringA(("PSOManager::bind - PSO not found or null: " + name + "\n").c_str());
+			return;
+		}
+		core->getCommandList()->SetPipelineState(it->second);
 	}
 
 };

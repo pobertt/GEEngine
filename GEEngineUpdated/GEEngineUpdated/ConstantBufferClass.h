@@ -66,7 +66,6 @@ public:
 		memcpy(&buffer[offset + cbVariable.offset], data, cbVariable.size);
 	}
 
-
 	// GPU address of contents
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUAddress() const
 	{

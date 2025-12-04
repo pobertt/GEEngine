@@ -38,17 +38,23 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	//Create instance of static mesh
 	Tree tree;
 
+	AnimatedModel animatedModel;
+	AnimationInstance animatedInstance;
 
 	// Creates a window
 	win.initialize("My Window", 1024, 1024); 
 
 	// Initializes the Direct3D12 core engine with that window
-	core.init(win.hwnd, 1024, 1024);           
+	core.init(win.hwnd, 1024, 1024);   
+
+	// Then initialize GPU-dependent assets
+	animatedModel.init(&core, "Resources/Models/TRex.gem");
+	animatedInstance.init(&animatedModel.animation, 0);
 
 	// Initialises the plane/cube/sphere
 	//planeDraw.init(&core);
-	//cube.init(&core);
-	//cube2.init(&core);
+	cube.init(&core);
+	cube2.init(&core);
 	SkyBox.init(&core, 32, 32, 100);
 
 	tree.init(&core);
@@ -57,11 +63,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	Matrix matrixWorld;
 	Matrix matrixWorld2;
 	Matrix SkyBoxMatrix;
+	Matrix TRex;
 
 	SkyBoxMatrix.translation(Vec3(0, 2, 0));
 
 	matrixWorld2.translation(Vec3(5, 0, 0));
 	matrixWorld2.scaling(Vec3(0.5, 0.5, 0.5));
+	TRex.scaling(Vec3(0.01f, 0.01f, 0.01f));
 
 	float t = 0;
 
@@ -101,10 +109,27 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// The CPU - side buffer is copied to the GPU constant buffer
 		//planeDraw.draw(&core, matrixWorld, vp);
 		SkyBox.draw(&core, SkyBoxMatrix, vp);
-		//cube.draw(&core, matrixWorld, vp);
-		//cube2.draw(&core, matrixWorld2, vp);
-		matrixWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		tree.draw(&core, matrixWorld, vp);
+		cube.draw(&core, matrixWorld, vp);
+		cube2.draw(&core, matrixWorld2, vp);
+		
+		// Draw a row of 10 trees
+		for (int i = 0; i < 10; i++)
+		{
+			Matrix currentTreeWorld; // Creates a new Identity matrix
+
+			currentTreeWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
+			
+
+			currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
+			tree.draw(&core, currentTreeWorld, vp);
+		}
+		float dt = tim.dt();
+		animatedInstance.update("run", dt);
+		if (animatedInstance.animationFinished() == true)
+		{
+			animatedInstance.resetAnimationTime();
+		}
+		animatedModel.draw(&core, &animatedInstance, vp, TRex);
 		
 
 		// finished rendering
@@ -118,3 +143,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 }
 
 // Screen shake - changing FOV basically changing something to 5 3 4 1 2 (shaking the screen basically)
+
+// Animation file- whole header file, an example animated model class (both on moodle)
+/* We have to do slide 45 to 47
+* How it works/Implementation:
+* Define structures that hold bones and skeleton
+* Create animation sequence class
+* - Stores animation data for one animation
+* Create animation class
+* Stores skeleton and animations
+* Animation instance
+* */
+/* Animation controller is transitioning animations between each other (states) e.g. running -> dead
+*/
