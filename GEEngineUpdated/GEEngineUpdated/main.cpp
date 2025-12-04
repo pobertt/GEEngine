@@ -5,7 +5,7 @@
 #include "mesh.h"
 #include "Prim_Vertex.h"
 #include "ScreenSpaceTriangle.h"
-#include "ConstantBufferClass.h"
+//#include "ConstantBuffer.h"
 #include "Shader.h"
 #include "Plane.h"
 #include "Cube.h"

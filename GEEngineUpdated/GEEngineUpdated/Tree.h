@@ -14,7 +14,7 @@ public:
 	PSOManager psos;
 
 	// Create instance of Shader
-	Shader shader;
+	Shaders shaders;
 
 	// Implement plane, 2 triangles
 	void init(Core* core)

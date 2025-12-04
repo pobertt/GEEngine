@@ -231,12 +231,7 @@ inline float Dot(const Vec3& pVec1, const Vec3& pVec2)   // dot product between 
 }
 
 // Outside Vector class
-inline float Cross(const Vec3& pVec1, const Vec3& pVec2)    // cross product between two input vectors
-{
-	return (pVec1.v[1] * pVec2.v[2] - pVec1.v[2] * pVec2.v[1],
-		pVec1.v[2] * pVec2.v[0] - pVec1.v[0] * pVec2.v[2],
-		pVec1.v[0] * pVec2.v[1] - pVec1.v[1] * pVec2.v[0]);
-}
+static Vec3 Cross(const Vec3& v1, const Vec3& v2) { return Vec3((v1.y * v2.z) - (v1.z * v2.y), (v1.z * v2.x) - (v1.x * v2.z), (v1.x * v2.y) - (v1.y * v2.x)); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -568,6 +563,10 @@ public:
 		return ret;
 	}
 
+	Matrix operator*(const Matrix& matrix)
+	{
+		return multiply(matrix);
+	}
 
 	float& operator[](int index)   // operator for natural access
 	{
@@ -723,7 +722,13 @@ public:
 
 		float q[4];       // union allows array style access
 	};
-
+	Quaternion()
+	{
+		a = 0;
+		b = 0;
+		c = 0;
+		d = 0;
+	}
 	// Standard Constructor to initialise the quaternion components
 	Quaternion(float x, float y, float z, float w)
 	{
@@ -770,7 +775,7 @@ public:
 		return Quaternion{ -a, -b, -c, -d };
 	}
 
-	Quaternion Slerp(Quaternion q1, Quaternion q2, float time)     // slerp between two input quaternions over input time
+	static Quaternion Slerp(Quaternion q1, Quaternion q2, float time)     // slerp between two input quaternions over input time
 	{
 		// finds dot product between two quaternions
 		float dotProduct = q1.a * q2.a + q1.b * q2.b + q1.c * q2.c + q1.d * q2.d;
@@ -1015,3 +1020,48 @@ t simpleInterpolateAttribute(t a0, t a1, t a2, float alpha, float beta, float ga
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
+
+class Frame
+{
+public:
+	Vec3 u;
+	Vec3 v;
+	Vec3 w;
+	void fromVector(const Vec3& n)
+	{
+		// Gram-Schmit
+		w = n.normalize();
+		if (fabsf(w.x) > fabsf(w.y))
+		{
+			float l = 1.0f / sqrtf(w.x * w.x + w.z * w.z);
+			u = Vec3(w.z * l, 0.0f, -w.x * l);
+		}
+		else
+		{
+			float l = 1.0f / sqrtf(w.y * w.y + w.z * w.z);
+			u = Vec3(0, w.z * l, -w.y * l);
+		}
+		v = Cross(w, u);
+	}
+	void fromVectorTangent(const Vec3& n, const Vec3& t)
+	{
+		w = n.normalize();
+		u = t.normalize();
+		v = Cross(w, u);
+	}
+	Vec3 toLocal(const Vec3& vec) const
+	{
+		return Vec3(Dot(vec, u), Dot(vec, v), Dot(vec, w));
+	}
+	Vec3 toWorld(const Vec3& vec) const
+	{
+		return ((u * vec.x) + (v * vec.y) + (w * vec.z));
+	}
+};
+
+Vec3 sphericalToVector(const float theta, const float phi)
+{
+	float ct = cosf(theta);
+	float st = sqrtf(1.0f - (ct * ct));
+	return Vec3(sinf(phi) * st, ct, cosf(phi) * st);
+}

@@ -123,6 +123,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AnimatedModel.h" />
+    <ClInclude Include="Animation.h" />
     <ClInclude Include="ConstantBufferClass.h" />
     <ClInclude Include="core.h" />
     <ClInclude Include="Cube.h" />

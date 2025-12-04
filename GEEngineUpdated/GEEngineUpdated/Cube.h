@@ -16,6 +16,8 @@ public:
 	// Create instance of Shader
 	Shader shader;
 
+	std::string shaderName;
+
 	// Helper function for plane
 	STATIC_VERTEX addVertex(Vec3 p, Vec3 n, float tu, float tv)
 	{
@@ -84,20 +86,9 @@ public:
 
 		mesh.init(core, vertices, indices);
 
-		// Load the shaders
-		shader.LoadShaders("VertexShader.hlsl", "PixelShader.hlsl");
-
-		// Reflect shaders to populate constant buffer offsets
-		shader.ReflectShaders(core, shader.pixelShader, false);
-		shader.ReflectShaders(core, shader.vertexShader, true);
-
-		psos.createPSO(
-			core,
-			"Triangle",
-			shader.vertexShader,
-			shader.pixelShader,
-			mesh.inputLayoutDesc
-		);
+		shaders->load(core, "StaticModelUntextured", "VS.txt", "PSUntextured.txt");
+		shaderName = "StaticModelUntextured";
+		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
 	// draw function for spinning lights and pulsing triangle
