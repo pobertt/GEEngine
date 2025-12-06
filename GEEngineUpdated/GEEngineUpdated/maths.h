@@ -471,6 +471,14 @@ public:
 		m[12] = m12; m[13] = m13; m[14] = m14; m[15] = m15;
 	}
 
+	void identity()
+	{
+		memset(m, 0, 16 * sizeof(float));
+		m[0] = 1.0f;
+		m[5] = 1.0f;
+		m[10] = 1.0f;
+		m[15] = 1.0f;
+	}
 
 	Vec4 mul(const Vec4& pVec)   // multiply matrix by input vec4
 	{

@@ -118,11 +118,13 @@ public:
 	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices)
 	{
 		init(core, &vertices[0], sizeof(STATIC_VERTEX), vertices.size(), &indices[0], indices.size());
+		// Static mesh layout (matches STATIC_VERTEX and typical VS input)
 		inputLayout = {
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "COLOUR",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 		};
-
 		inputLayoutDesc.NumElements = (UINT)inputLayout.size();
 		inputLayoutDesc.pInputElementDescs = inputLayout.data();
 	}
@@ -131,18 +133,17 @@ public:
 		// Call base init to setup buffers (it will set up default layout, but we overwrite it below)
 		init(core, &vertices[0], sizeof(ANIMATED_VERTEX), static_cast<int>(vertices.size()), &indices[0], static_cast<int>(indices.size()));
 
-		// OVERWRITE LAYOUT with Animated Format
+		// Ensure animated layout matches VSAnim.hlsl (already correct)
 		inputLayout = {
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "BONEIDS",  0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "WEIGHTS",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 60, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			{ "POSITION",    0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",    0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BONEIDS",     0, DXGI_FORMAT_R32G32B32A32_UINT,  0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BONEWEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
-
 		inputLayoutDesc.NumElements = (UINT)inputLayout.size();
-		inputLayoutDesc.pInputElementDescs = inputLayout.data(); // Safe pointer
+		inputLayoutDesc.pInputElementDescs = inputLayout.data();
 	}
 };
 
@@ -214,6 +215,11 @@ public:
 				vertices.push_back(v);
 			}
 			mesh->init(core, vertices, gemmeshes[i].indices);
+
+			char buf[128];
+			sprintf_s(buf, "Animated mesh indices: %u\n", mesh->numMeshIndices);
+			OutputDebugStringA(buf);
+
 			meshes.push_back(mesh);
 		}
 
@@ -285,11 +291,18 @@ public:
 	}
 	void draw(Core* core, AnimationInstance* instance, Matrix& vp, Matrix& w)
 	{
+		// Bind PSO first
 		psos.bind(core, "AnimatedModelPSO");
+
+		// Update constants
 		shader.vsConstantBuffers[0]->update("W", &w);
 		shader.vsConstantBuffers[0]->update("VP", &vp);
 		shader.vsConstantBuffers[0]->update("bones", instance->matrices);
+
+		// Apply shaders/root signature
 		shader.apply(core);
+
+		// Draw
 		for (int i = 0; i < meshes.size(); i++)
 		{
 			meshes[i]->draw(core);

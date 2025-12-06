@@ -99,12 +99,19 @@ public:
 	// Apply constant buffers to pipeline
 	void apply(Core* core)
 	{
+		// Root signature must be set before CBVs
+		core->getCommandList()->SetGraphicsRootSignature(core->rootSignature);
+
+		// Bind VS constant buffers (b0 at root parameter 0)
+		// Assumes your root signature has a CBV at parameter 0, visibility VS.
 		for (int i = 0; i < vsConstantBuffers.size(); i++)
 		{
 			core->getCommandList()->SetGraphicsRootConstantBufferView(0, vsConstantBuffers[i]->getGPUAddress());
 			vsConstantBuffers[i]->next();
 		}
 
+		// Bind PS constant buffers (e.g., b0/b1 at root parameter 1)
+		// Assumes your root signature has a CBV at parameter 1, visibility PS.
 		for (int i = 0; i < psConstantBuffers.size(); i++)
 		{
 			core->getCommandList()->SetGraphicsRootConstantBufferView(1, psConstantBuffers[i]->getGPUAddress());

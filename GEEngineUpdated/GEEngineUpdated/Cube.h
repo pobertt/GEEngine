@@ -87,6 +87,11 @@ public:
 		// Load the shaders
 		shader.LoadShaders("VertexShader.hlsl", "PixelShader.hlsl");
 
+		if (!shader.vertexShader || !shader.pixelShader) {
+			OutputDebugStringA("CRITICAL ERROR: Cube shaders failed to compile/load.\n");
+			return;
+		}
+
 		// Reflect shaders to populate constant buffer offsets
 		shader.ReflectShaders(core, shader.pixelShader, false);
 		shader.ReflectShaders(core, shader.vertexShader, true);

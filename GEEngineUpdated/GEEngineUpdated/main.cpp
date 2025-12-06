@@ -50,6 +50,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	// Then initialize GPU-dependent assets
 	animatedModel.init(&core, "Resources/Models/TRex.gem");
 	animatedInstance.init(&animatedModel.animation, 0);
+	for (int i = 0; i < 256; ++i) animatedInstance.matrices[i].identity();
 
 	// Initialises the plane/cube/sphere
 	//planeDraw.init(&core);
@@ -64,6 +65,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	Matrix matrixWorld2;
 	Matrix SkyBoxMatrix;
 	Matrix TRex;
+
+	// Movement state for the main cube
+	float cubeX = 0.0f;           // current X position
+	const float moveSpeed = 1.0f; // units per second
 
 	SkyBoxMatrix.translation(Vec3(0, 2, 0));
 
@@ -85,7 +90,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		}
 
 		// Cumulative time in seconds since last frame
-		t += tim.dt();
+		float dt = tim.dt();
+		t += dt;
+
+		// Handle input: A=left, D=right
+		if (win.keys['A'] == 1) { cubeX += moveSpeed * dt; }
+		if (win.keys['D'] == 1) { cubeX -= moveSpeed * dt; }
+
+		// Update cube world transform at origin with current X offset
+		matrixWorld.identity();
+		matrixWorld.translation(Vec3(0.0f, 0.0f, 0.0f));
 
 		// needed for perspectiveProjection matrix
 		float aspect = (float)win.width / (float)win.height;
@@ -97,7 +111,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		Matrix p = p.perspectiveProjection(aspect, fieldOfView, _near, _far);
 
 		// Camera orbit
-		Vec3 from = Vec3(11 * cos(t), 5, 11 * sinf(t));
+		Vec3 from = Vec3(0.0f, 5.0f, 15.0f);//Vec3(11 * cos(t), 5, 11 * sinf(t));
 
 		// View Matrix - eye, target, up
 		Matrix v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
@@ -105,10 +119,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// Combined view perspective
 		Matrix vp = p.multiply(v);
 
+		core.beginRenderPass();
+
 		// Updates the GPU constant buffer and issues the draw call.
 		// The CPU - side buffer is copied to the GPU constant buffer
 		//planeDraw.draw(&core, matrixWorld, vp);
-		SkyBox.draw(&core, SkyBoxMatrix, vp);
+		
 		cube.draw(&core, matrixWorld, vp);
 		cube2.draw(&core, matrixWorld2, vp);
 		
@@ -123,15 +139,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 			currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
 			tree.draw(&core, currentTreeWorld, vp);
 		}
-		float dt = tim.dt();
+		
 		animatedInstance.update("run", dt);
 		if (animatedInstance.animationFinished() == true)
 		{
 			animatedInstance.resetAnimationTime();
 		}
+		TRex.translation(Vec3(cubeX, 0.0f, 0.0f));
 		animatedModel.draw(&core, &animatedInstance, vp, TRex);
 		
-
+		SkyBox.draw(&core, SkyBoxMatrix, vp);
 		// finished rendering
 		core.finishFrame();             
 
