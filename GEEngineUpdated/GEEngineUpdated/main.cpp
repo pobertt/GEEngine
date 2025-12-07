@@ -12,6 +12,7 @@
 #include "Sphere.h"
 #include "Tree.h"
 #include "Player.h"
+#include "Skybox.h"
 
 using namespace std;
 
@@ -38,7 +39,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	Cube cube;
 
 	//Create instance of a sphere
-	Sphere SkyBox;
+	Skybox SBox;
 	Tree tree;
 	
 	Player player;
@@ -62,8 +63,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	// Initialises the plane/cube/sphere
 	//planeDraw.init(&core);
 	cube.init(&core);
-	SkyBox.init(&core, 32, 32, 100);
-
 	tree.init(&core);
 	player.init(&core);
 
@@ -94,13 +93,21 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
-		// Update cube world transform at origin with current X offset
-		matrixWorld.identity();
-		matrixWorld.translation(Vec3(0.0f, 0.0f, 0.0f));
-
+		// Update player or skip if focusing on orbit camera
 		player.update(dt, win.keys);
 
-		Matrix vp = player.camera(win, player.position, dt);
+		//Matrix vp = player.OrbitCamera(win, t);
+		Matrix vp = player.NewCamera(win, player.position, t);
+
+		//// Orbit camera around origin (old behavior)
+		//float aspect = (float)win.width / (float)win.height;
+		//float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
+		//Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
+
+		//Vec3 from = Vec3(11.0f * cosf(t), 5.0f, 11.0f * sinf(t));
+		//Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
+
+		//Matrix vp = p.multiply(v);
 
 		core.beginRenderPass();
 
@@ -108,35 +115,29 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// The CPU - side buffer is copied to the GPU constant buffer
 		//planeDraw.draw(&core, matrixWorld, vp);
 		
+		// Draw scene geometry first
 		//cube.draw(&core, matrixWorld, vp);
-		
-		// Draw a row of 10 trees
-		
-		for (int i = 0; i < 10; i++)
-		{
-			Matrix currentTreeWorld; // Creates a new Identity matrix
-
+		for (int i = 0; i < 1; i++) {
+			Matrix currentTreeWorld;
 			currentTreeWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
-
-
 			currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
 			tree.draw(&core, currentTreeWorld, vp);
 		}
-		
-		
+
+		// If you keep the animated model disabled, skip it. Otherwise:
 		animatedInstance.update("run", dt);
-		if (animatedInstance.animationFinished() == true)
-		{
+		if (animatedInstance.animationFinished()) {
 			animatedInstance.resetAnimationTime();
 		}
-		//animatedModel.draw(&core, &animatedInstance, vp, TRex);
-		
-		
+		animatedModel.draw(&core, &animatedInstance, vp, TRex);
 
-		// Draw with vp
+		// Draw skybox last using its original world (centered at origin or a fixed transform)
+		//SBox.draw(&core, SkyBoxMatrix, vp);
+
+		// Draw with vp	
 		// debugFloor.draw(&core, floorWorld, vp);
 		player.draw(&core, vp);
-		// SkyBox.draw(&core, SkyBoxMatrix, vp);
+		
 		// finished rendering
 		core.finishFrame();             
 

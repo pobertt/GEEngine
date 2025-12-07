@@ -28,11 +28,11 @@ public:
     void update(float dt, const bool* keys /* from Window */)
     {
         // Only left/right input
-        if (keys['A'] == 1) position.x -= lateralSpeed * dt;
-        if (keys['D'] == 1) position.x += lateralSpeed * dt;
+        if (keys['A'] == 1) position.x += lateralSpeed * dt;
+        if (keys['D'] == 1) position.x -= lateralSpeed * dt;
 
         // Always move forward (+z)
-            position.z += forwardSpeed * dt;
+            position.z -= forwardSpeed * dt;
 
         // Clamp lanes if desired (optional):
         // position.x = std::max(-4.0f, std::min(4.0f, position.x));
@@ -43,41 +43,50 @@ public:
         world.translation(position);
     }
 
-    Matrix camera(Window& win, const Vec3& playerPos, float dt) {
-        /*
-        // needed for perspectiveProjection matrix
-		float aspect = (float)win.width / (float)win.height;
-		float fieldOfView = 60.0f;
-		float _near = 0.01f;
-		float _far = 10000.0f;
-
-		// Perspective Projection - aspect, fov, near, far
-		Matrix p = p.perspectiveProjection(aspect, fieldOfView, _near, _far);
-
-		// Camera orbit
-		Vec3 from = Vec3(0.0f, 5.0f, 15.0f);//Vec3(11 * cos(t), 5, 11 * sinf(t));
-        */
-
-
+    Matrix OrbitCamera(Window& win, float dt) {
         float aspect = (float)win.width / (float)win.height;
-        float fovRad = 70.0f * (3.14159265358979323846f / 180.0f);
-        Matrix p; p = p.perspectiveProjection(aspect, fovRad, 0.01f, 2000.0f);
+        float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
+        Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
 
-        const float camHeight = 800.0f;
-        const float camBack   = 1000.0f;
+        Vec3 from = Vec3(11.0f * cosf(dt), 5.0f, 11.0f * sinf(dt));
+        Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
 
-        // Lock X for the camera
-        static float camXLocked = 0.0f; // or set this once to playerPos.x
-        Vec3 desiredCamPos = Vec3(camXLocked, playerPos.y + camHeight, playerPos.z - camBack);
-        Vec3 camTarget     = Vec3(camXLocked, playerPos.y + 1.0f,      playerPos.z + 18.0f);
+        Matrix vp = p.multiply(v);
 
-        static Vec3 camPos = desiredCamPos;
-        float alpha = min(6.0f * dt, 1.0f);
-        camPos.y += (desiredCamPos.y - camPos.y) * alpha;
-        camPos.z += (desiredCamPos.z - camPos.z) * alpha;
-        camPos.x  = camXLocked;
+        return vp;
+    }
 
-        Matrix v; v = v.lookAtMatrix(camPos, camTarget, Vec3(0, 1, 0));
+    Matrix NewCamera(Window& win, const Vec3& playerPos, float dt) {
+        float aspect = (float)win.width / (float)win.height;
+
+        // 1. Setup Projection (Degrees)
+        Matrix p; p = p.perspectiveProjection(aspect, 60.0f, 0.01f, 1000.0f);
+
+        // 2. Define Ideal Offset
+        const float camHeight = 5.0f;
+        const float camDist = 11.0f;
+
+        // The "Goal" position for this frame
+        Vec3 targetPos = Vec3(playerPos.x, playerPos.y + camHeight, playerPos.z + camDist);
+
+        // 3. Smoothly Interpolate (Lerp)
+        // We use a static variable to store where the camera WAS last frame.
+        // Initialize it to targetPos so it doesn't fly in from (0,0,0) at the start.
+        static Vec3 currentCamPos = targetPos;
+
+        // Calculate smoothness (Higher 6.0f = faster/stiffer, Lower = slower/floatier)
+        float alpha = 6.0f * dt;
+        if (alpha > 1.0f) alpha = 1.0f; // Clamp to prevent overshooting
+
+        // Linear Interpolation: Current = Current + (Target - Current) * alpha
+        currentCamPos.x += (targetPos.x - currentCamPos.x) * alpha;
+        currentCamPos.y += (targetPos.y - currentCamPos.y) * alpha;
+        currentCamPos.z += (targetPos.z - currentCamPos.z) * alpha;
+
+        // 4. Create View Matrix
+        // We look at the player's current position, but from our smoothed camera position
+        Matrix v; v = v.lookAtMatrix(currentCamPos, playerPos, Vec3(0, 1, 0));
+
         return p.multiply(v);
     }
 
