@@ -133,6 +133,7 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="PipeLineState.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="Prim_Vertex.h" />
     <ClInclude Include="ScreenSpaceTriangle.h" />
     <ClInclude Include="Shader.h" />

@@ -71,3 +71,72 @@ public:
 		mesh.draw(core);
 	}
 };
+
+struct FloorSegment
+{
+    Plane plane;
+    Matrix world;
+    float length; // along +z
+};
+
+class Floor
+{
+public:
+    std::vector<FloorSegment> segments;
+    int count = 0;
+    float segmentLength = 20.0f; // each tile length along z
+    float width = 10.0f;         // optional scale on x
+
+    void init(Core* core, int numSegments)
+    {
+        segments.clear();
+        count = numSegments;
+        for (int i = 0; i < count; ++i)
+        {
+            FloorSegment seg;
+            seg.plane.init(core);            // your Plane::init(core) must exist
+            seg.length = segmentLength;
+            seg.world.identity();
+            // Scale plane to desired width/length; translation stacks afterward
+            seg.world.scaling(Vec3(width, 1.0f, segmentLength));
+            seg.world.translation(Vec3(0.0f, 0.0f, i * segmentLength));
+            segments.push_back(seg);
+        }
+    }
+
+    // Recycle the segment that falls behind camera/player
+    void update(const Vec3& playerPos)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            // If the segment is far behind the player, move it forward by N * segmentLength
+            float segZ = segments[i].world[14]; // m[14] is translation.z in your row-major Matrix
+            if (segZ + segmentLength < playerPos.z - segmentLength)
+            {
+                // Find max z among segments
+                float maxZ = segZ;
+                for (int j = 0; j < count; ++j)
+                {
+                    float z = segments[j].world[14];
+                    if (z > maxZ) maxZ = z;
+                }
+
+                // Move this segment just ahead of the furthest one
+                float newZ = maxZ + segmentLength;
+                Matrix w;
+                w.identity();
+                w.scaling(Vec3(width, 1.0f, segmentLength));
+                w.translation(Vec3(0.0f, 0.0f, newZ));
+                segments[i].world = w;
+            }
+        }
+    }
+
+    void draw(Core* core, Matrix& vp)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            segments[i].plane.draw(core, segments[i].world, vp);
+        }
+    }
+};

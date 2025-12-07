@@ -230,19 +230,19 @@ public:
 		}
 		// --- FIX END ---
 
-		// Load Shaders (Ensure these files exist in your executable folder!)
+		// Load Shaders (only the matching pair; no fallback)
 		shader.LoadShaders("VSAnim.hlsl", "PSUntextured.hlsl");
 
 		if (!shader.vertexShader || !shader.pixelShader) {
-			OutputDebugStringA("CRITICAL ERROR: Animation Shaders failed to compile/load.\n");
-			return; // Stop here!
+			OutputDebugStringA("CRITICAL: VSAnim.hlsl or PSUntextured.hlsl failed to compile/load. Fix HLSL build settings.\n");
+			return;
 		}
 
 		// Reflect shaders
 		shader.ReflectShaders(core, shader.pixelShader, false);
 		shader.ReflectShaders(core, shader.vertexShader, true);
 
-		// Create PSO (Safe access now)
+		// Create PSO
 		psos.createPSO(
 			core,
 			"AnimatedModelPSO",
@@ -250,6 +250,11 @@ public:
 			shader.pixelShader,
 			meshes[0]->inputLayoutDesc
 		);
+
+		if (!psos.hasPSO("AnimatedModelPSO")) {
+			OutputDebugStringA("ERROR: AnimatedModelPSO creation failed after shader update.\n");
+			return;
+		}
 
 		memcpy(&animation.skeleton.globalInverse, &gemanimation.globalInverse, 16 * sizeof(float));
 		for (int i = 0; i < gemanimation.bones.size(); i++)
@@ -291,16 +296,19 @@ public:
 	}
 	void draw(Core* core, AnimationInstance* instance, Matrix& vp, Matrix& w)
 	{
-		// Bind PSO first
-		psos.bind(core, "AnimatedModelPSO");
+		// Begin the render pass before setting pipeline and drawing
+		core->beginRenderPass();
 
-		// Update constants
+		// Update constants first
 		shader.vsConstantBuffers[0]->update("W", &w);
 		shader.vsConstantBuffers[0]->update("VP", &vp);
 		shader.vsConstantBuffers[0]->update("bones", instance->matrices);
 
-		// Apply shaders/root signature
+		// Apply shaders/root signature (keep consistent with other draw paths)
 		shader.apply(core);
+
+		// Bind PSO (after apply, same pattern as Tree/Sphere)
+		psos.bind(core, "AnimatedModelPSO");
 
 		// Draw
 		for (int i = 0; i < meshes.size(); i++)
