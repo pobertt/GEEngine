@@ -44,6 +44,21 @@ public:
     }
 
     Matrix camera(Window& win, const Vec3& playerPos, float dt) {
+        /*
+        // needed for perspectiveProjection matrix
+		float aspect = (float)win.width / (float)win.height;
+		float fieldOfView = 60.0f;
+		float _near = 0.01f;
+		float _far = 10000.0f;
+
+		// Perspective Projection - aspect, fov, near, far
+		Matrix p = p.perspectiveProjection(aspect, fieldOfView, _near, _far);
+
+		// Camera orbit
+		Vec3 from = Vec3(0.0f, 5.0f, 15.0f);//Vec3(11 * cos(t), 5, 11 * sinf(t));
+        */
+
+
         float aspect = (float)win.width / (float)win.height;
         float fovRad = 70.0f * (3.14159265358979323846f / 180.0f);
         Matrix p; p = p.perspectiveProjection(aspect, fovRad, 0.01f, 2000.0f);
