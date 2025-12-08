@@ -17,6 +17,12 @@ static T lerp(const T a, const T b, float t)
 	return a * (1.0f - t) + (b * t);
 }
 
+template <typename T>
+inline T clamp(T v, T lo, T hi)
+{
+	return (v < lo) ? lo : (v > hi) ? hi : v;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 class Vec3
@@ -781,37 +787,28 @@ public:
 		return Quaternion{ -a, -b, -c, -d };
 	}
 
-	static Quaternion Slerp(Quaternion q1, Quaternion q2, float time)     // slerp between two input quaternions over input time
+	static Quaternion Slerp(Quaternion q1, Quaternion q2, float t)
 	{
-		// finds dot product between two quaternions
-		float dotProduct = q1.a * q2.a + q1.b * q2.b + q1.c * q2.c + q1.d * q2.d;
-		
-		// get the shortest path
-		if (dotProduct < 0.0f) 
+		Quaternion qr;
+		float dp = q1.a * q2.a + q1.b * q2.b + q1.c * q2.c + q1.d * q2.d;
+		Quaternion q11 = dp < 0 ? -q1 : q1;
+		dp = dp > 0 ? dp : -dp;
+		float theta = acosf(clamp(dp, -1.0f, 1.0f));
+		if (theta == 0)
 		{
-			// negate Quaternion 2
-			q2.a = -q2.a;
-			q2.b = -q2.b;
-			q2.c = -q2.c;
-			q2.d = -q2.d;
-			dotProduct = -dotProduct;
+			return q1;
 		}
-
-		// set up theta and sin theta
-		float theta = acosf(dotProduct);
-		float sinTheta = sinf(theta);
-
-		// from formula
-		float w1 = sinf(theta * (1 - time)) / sinTheta;
-		float w2 = sinf(theta * time) / sinTheta;
-
-		return Quaternion(
-			q1.a * w1 + q2.a * w2,
-			q1.b * w1 + q2.b * w2,
-			q1.c * w1 + q2.c * w2,
-			q1.d * w1 + q2.d * w2
-		);
-
+		float d = sinf(theta);
+		float a = sinf((1 - t) * theta);
+		float b = sinf(t * theta);
+		float coeff1 = a / d;
+		float coeff2 = b / d;
+		qr.a = coeff1 * q11.a + coeff2 * q2.a;
+		qr.b = coeff1 * q11.b + coeff2 * q2.b;
+		qr.c = coeff1 * q11.c + coeff2 * q2.c;
+		qr.d = coeff1 * q11.d + coeff2 * q2.d;
+		qr.Normalised();
+		return qr;
 	}
 
 	Quaternion quatMul(const Quaternion& q1, const Quaternion& q2)  // multiple two input quaternions together
