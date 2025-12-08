@@ -1032,3 +1032,4 @@ inline Matrix operator*(const Matrix& lhs, const Matrix& rhs)
 {
     return lhs.multiply(rhs);
 }
+
