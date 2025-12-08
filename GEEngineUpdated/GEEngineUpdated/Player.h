@@ -1,6 +1,7 @@
 #pragma once
-#include "Cube.h"
+#include "Objects.h"
 #include "maths.h"
+#include "window.h"
 #include "core.h"
 
 class Player

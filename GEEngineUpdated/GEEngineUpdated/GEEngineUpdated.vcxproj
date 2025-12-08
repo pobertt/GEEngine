@@ -125,27 +125,22 @@
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="core.h" />
-    <ClInclude Include="Cube.h" />
     <ClInclude Include="GamesEngineeringBase.h" />
     <ClInclude Include="GEMLoader.h" />
     <ClInclude Include="maths.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="PipeLineState.h" />
-    <ClInclude Include="Plane.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Prim_Vertex.h" />
     <ClInclude Include="ScreenSpaceTriangle.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Skybox.h" />
-    <ClInclude Include="Tree.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Objects.h" />
-    <ClCompile Include="Sphere.h" />
     <ClCompile Include="window.cpp" />
-    <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

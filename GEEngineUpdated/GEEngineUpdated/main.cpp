@@ -6,13 +6,8 @@
 #include "Prim_Vertex.h"
 #include "ScreenSpaceTriangle.h"
 #include "Shader.h"
-#include "Plane.h"
-#include "Cube.h"
-#include "Sphere.h"
-#include "Tree.h"
-#include "Player.h"
-#include "Skybox.h"
 #include "Objects.h"
+#include "Player.h"
 
 using namespace std;
 
@@ -33,8 +28,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	PSOManager psos;
 
 	//plane
-	plane floor;
+	Plane floor;
 	floor.init(&core, &psos, &shaders);
+
+	Cube cube;
+	cube.init(&core, &psos, &shaders);
+
+	Player player;
+	player.init(&core, &psos, &shaders);
+
+	Sphere sphere;
+	sphere.init(&core, &psos, &shaders, 20, 20, 20);
 
 	//tree
 	staticModel tree;
@@ -62,31 +66,21 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
-		float aspect = (float)win.width / (float)win.height;
-		float fieldOfView = 60.0f;
-		float _near = 0.01f;
-		float _far = 10000.0f;
+		Matrix vp = player.OrbitCamera(win, t);
 
-	
-		Matrix p = p.perspectiveProjection(aspect, fieldOfView, _near, _far);
-
-		// Camera orbit
-		Vec3 from = Vec3(11 * cos(t), 5, 11 * sinf(t));
-
-		// View Matrix - eye, target, up
-		Matrix v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
-
-		// Combined view perspective
-		Matrix vp = p.multiply(v);
+		//player.update(t, win.keys);
 
 		//update shaders 
 		shaders.updateConstantVS("staticModel", "staticMeshBuffer", "VP", &vp);
 		core.beginRenderPass();
 
-		
-
 		//plane 
 		floor.draw(&core, &psos, &shaders, vp);
+
+		cube.draw(&core, &psos, &shaders, vp);
+		sphere.draw(&core, &psos, &shaders, vp);
+		player.draw(&core, &psos, &shaders, vp);
+		
 
 		//tree
 		Matrix W;
