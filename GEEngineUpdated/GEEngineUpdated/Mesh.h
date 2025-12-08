@@ -143,6 +143,7 @@ public:
 class StaticMesh {
 public:
 	std::vector<Mesh*> meshes;
+	std::vector<std::string> textureFilenames;
 
 	void init(Core* core, std::string filename) {
 		GEMLoader::GEMModelLoader loader;
@@ -157,6 +158,7 @@ public:
 				memcpy(&v, &gemmeshes[i].verticesStatic[j], sizeof(STATIC_VERTEX));
 				vertices.push_back(v);
 			}
+			textureFilenames.push_back(gemmeshes[i].material.find("albedo").getValue());
 			mesh->init(core, vertices, gemmeshes[i].indices);
 			meshes.push_back(mesh);
 		}
@@ -173,6 +175,7 @@ class AnimatedMesh {
 public:
 	std::vector<Mesh*> meshes;
 	Animation animation;
+	std::vector<std::string> textureFilenames;
 
 	void init(Core* core, std::string filename) {
 		GEMLoader::GEMModelLoader loader;
@@ -189,6 +192,7 @@ public:
 				memcpy(&v, &gemmeshes[i].verticesAnimated[j], sizeof(ANIMATED_VERTEX));
 				vertices.push_back(v);
 			}
+			textureFilenames.push_back(gemmeshes[i].material.find("albedo").getValue());
 			mesh->init(core, vertices, gemmeshes[i].indices);
 			meshes.push_back(mesh);
 		}

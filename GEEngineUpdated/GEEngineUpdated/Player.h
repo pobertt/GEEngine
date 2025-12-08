@@ -17,7 +17,7 @@ public:
     void init(Core* core, PSOManager* psos, Shaders* shaders)
     {
         cube.init(core, psos, shaders);
-        position = Vec3(0.0f, 0.5f, 0.0f); // start slightly above the plane
+        position = Vec3(1.0f, 0.0f, 0.0f); // start slightly above the plane
         scale = Vec3(0.5f, 0.5f, 0.5f);
         lateralSpeed = 5.0f;
         forwardSpeed = 6.0f;

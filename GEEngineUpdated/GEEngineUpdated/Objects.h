@@ -5,7 +5,7 @@
 #include "Mesh.h"
 #include "PipelineState.h"
 #include "Shader.h"
-
+#include "Textures.h"
 
 class Plane {
 public:
@@ -232,11 +232,12 @@ public:
 	StaticMesh mesh;
 	std::string shaderName;
 
-	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename) {
+	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename, Texture* texture) {
 		shaderName = "static";
 		mesh.init(core, filename);
 		shaders->load(core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
 		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
+		texture->load("Resources/Models/Textures/T-rex_Base_Color_alb.png");
 	}
 
 	void update(Shaders* shaders, Matrix& w) {

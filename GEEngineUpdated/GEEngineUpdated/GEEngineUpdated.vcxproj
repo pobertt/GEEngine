@@ -135,6 +135,8 @@
     <ClInclude Include="ScreenSpaceTriangle.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Skybox.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="Textures.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>

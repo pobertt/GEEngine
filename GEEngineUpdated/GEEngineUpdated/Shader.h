@@ -168,6 +168,14 @@ public:
 	{
 		updateConstant(constantBufferName, variableName, data, psConstantBuffers);
 	}
+
+	void updateTexturePS(Core* core, std::string name, int heapOffset) {
+		UINT bindPoint = textureBindPoints[name];
+		D3D12_GPU_DESCRIPTOR_HANDLE handle = core->srvHeap.gpuHandle;
+		handle.ptr = handle.ptr + (UINT64)(heapOffset - bindPoint) * (UINT64)core->srvHeap.incrementSize;
+		core->getCommandList()->SetGraphicsRootDescriptorTable(2, handle);
+	}
+
 	void apply(Core* core)
 	{
 		for (int i = 0; i < vsConstantBuffers.size(); i++)
@@ -228,6 +236,8 @@ public:
 	{
 		shaders[name].updateConstantPS(constantBufferName, variableName, data);
 	}
+
+
 	Shader* find(std::string name)
 	{
 		return &shaders[name];

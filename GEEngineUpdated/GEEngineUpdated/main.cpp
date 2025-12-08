@@ -53,10 +53,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	float t = 0;
 
 	while (true) {
-		
-		
-
-
 		//core.resetCommandList();
 		core.beginFrame();
 
@@ -66,7 +62,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
-		player.update(dt, win.keys);
+		player.update(t, win.keys);
 
 		Matrix vp = player.OrbitCamera(win, t);
 
@@ -80,7 +76,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		//plane 
 		floor.draw(&core, &psos, &shaders, vp);
 
-		cube.draw(&core, &psos, &shaders, vp);
+		//cube.draw(&core, &psos, &shaders, vp);
 		sphere.draw(&core, &psos, &shaders, vp);
 		player.draw(&core, &psos, &shaders, vp);
 		
