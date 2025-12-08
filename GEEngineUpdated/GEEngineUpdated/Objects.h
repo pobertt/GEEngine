@@ -42,10 +42,9 @@ public:
 		return v;
 	}
 
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp) {
-		Matrix world;
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w) {
 		shaders->updateConstantVS("plane", "staticMeshBuffer", "VP", &vp);
-		shaders->updateConstantVS("plane", "staticMeshBuffer", "W", &world);
+		shaders->updateConstantVS("plane", "staticMeshBuffer", "W", &w);
 		shaders->apply(core, shaderName);
 		psos->bind(core, "planePSO");
 		mesh.draw(core);
@@ -135,13 +134,13 @@ public:
 	}
 
 	// draw function for spinning lights and pulsing triangle
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w)
 	{
 		Matrix cubeWorld;
 		core->beginRenderPass();
 
 		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "VP", &vp);
-		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "W", &cubeWorld);
+		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "W", &w);
 		shaders->apply(core, shaderName);
 		psos->bind(core, "StaticModelUntexturedPSO");
 		mesh.draw(core);

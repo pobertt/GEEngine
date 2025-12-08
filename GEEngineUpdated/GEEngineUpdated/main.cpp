@@ -16,6 +16,18 @@ void drawTrees(Core core, Matrix& vp) {
 	
 }
 
+void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* trexAnimation, animatedModel* trex, float dt, Matrix& vp, Matrix& W) {
+	//t-rex
+	trexAnimation->update("roar", dt);
+	if (trexAnimation->animationFinished() == true) {
+		trexAnimation->resetAnimationTime();
+	}
+	shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
+	W.scaling(Vec3(0.01f, 0.01f, 0.01f));
+	
+	trex->draw(core, psos, shaders, trexAnimation, vp, W);
+}
+
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
 	Window win;
 	win.initialize("My Window", 1024, 1024);
@@ -51,6 +63,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	trexAnimation.init(&trex.mesh.animation, 0);
 
 	float t = 0;
+	float trexX = 0.0f;
 
 	while (true) {
 		//core.resetCommandList();
@@ -62,11 +75,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
-		player.update(t, win.keys);
+		//player.update(t, win.keys);
+		if (win.keys['A'] == 1) { trexX += 5.0 * dt; }
+		if (win.keys['D'] == 1) { trexX -= 5.0 * dt; }
 
 		Matrix vp = player.OrbitCamera(win, t);
 
-		//player.update(t, win.keys);
 
 		//update shaders 
 		shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
@@ -74,11 +88,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		//draw static objects
 		//plane 
-		floor.draw(&core, &psos, &shaders, vp);
+		Matrix planeM;
+		planeM.translation(Vec3(0.0f, 0.0f, 0.0f));
+		floor.draw(&core, &psos, &shaders, vp, planeM);
 
 		//cube.draw(&core, &psos, &shaders, vp);
 		sphere.draw(&core, &psos, &shaders, vp);
-		player.draw(&core, &psos, &shaders, vp);
+		//player.draw(&core, &psos, &shaders, vp, planeM);
 		
 
 		//tree
@@ -87,16 +103,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		tree.update(&shaders, T);
 		tree.draw(&core, &psos, &shaders, vp);
 
-		//t-rex
 		Matrix W;
-		W.identity();
-		trexAnimation.update("run", t);
-		if (trexAnimation.animationFinished() == true) {
-			trexAnimation.resetAnimationTime();
-		}
-		shaders.updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
-		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		trex.draw(&core, &psos, &shaders, &trexAnimation, vp, W);
+		W.translation(Vec3(trexX, 0.0f, 0.0f));
+		PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, W);
 
 		core.finishFrame();
 	}

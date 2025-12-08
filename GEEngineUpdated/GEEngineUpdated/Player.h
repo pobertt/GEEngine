@@ -4,6 +4,8 @@
 #include "window.h"
 #include "core.h"
 
+//REDO ALL OF THIS
+
 class Player
 {
 public:
@@ -91,8 +93,8 @@ public:
         return p.multiply(v);
     }
 
-    void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
+    void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w)
     {
-        cube.draw(core, psos, shaders, vp);
+        cube.draw(core, psos, shaders, vp, w);
     }
 };
