@@ -35,11 +35,8 @@ public:
 			NULL, NULL, "VS", "vs_5_0", 0, 0, &vertexShader, &status);
 
 		// CHeck if vertex shader compiles
-		if (FAILED(hr))
-		{
-			if (status)
-				OutputDebugStringA((char*)status->GetBufferPointer());
-		}
+		if (FAILED(hr) || !vertexShader) { throw std::runtime_error("VS compile failed"); }
+		if (FAILED(hr) || !pixelShader) { throw std::runtime_error("PS compile failed"); }
 
 		// Compile pixel shader
 		std::string psSource = ReadFile(psName);
@@ -58,8 +55,11 @@ public:
 	// Reflect shader to get constant buffer information
 	void ReflectShaders(Core *core, ID3DBlob* shader, bool isVS)
 	{
+		if (!shader) { OutputDebugStringA("ReflectShaders: shader blob null\n"); return; }
 		ID3D12ShaderReflection* reflection;
-		D3DReflect(shader->GetBufferPointer(), shader->GetBufferSize(), IID_PPV_ARGS(&reflection));
+		HRESULT r = D3DReflect(shader->GetBufferPointer(), shader->GetBufferSize(), IID_PPV_ARGS(&reflection));
+		if (FAILED(r) || !reflection) { OutputDebugStringA("D3DReflect failed\n"); return; }
+
 		D3D12_SHADER_DESC desc;
 		reflection->GetDesc(&desc);
 

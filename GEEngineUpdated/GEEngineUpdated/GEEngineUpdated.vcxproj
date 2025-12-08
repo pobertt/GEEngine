@@ -144,6 +144,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Objects.h" />
     <ClCompile Include="Sphere.h" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="WinMain.cpp" />

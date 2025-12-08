@@ -178,103 +178,49 @@ public:
 	}
 };
 
-class AnimatedModel
-{
+class AnimatedMesh {
 public:
 	std::vector<Mesh*> meshes;
 	Animation animation;
-	std::vector<std::string> textureFilenames;
-	Shader shader;
-	PSOManager psos;
-	void init(Core* core, std::string filename)
-	{
+
+	void init(Core* core, std::string filename) {
 		GEMLoader::GEMModelLoader loader;
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		GEMLoader::GEMAnimation gemanimation;
 		loader.load(filename, gemmeshes, gemanimation);
 
-		// --- SAFETY CHECK 1: File Loading Failed ---
-		if (gemmeshes.empty()) {
-			OutputDebugStringA(("Error: No meshes found in " + filename + "\n").c_str());
-			return;
-		}
-
-		for (int i = 0; i < gemmeshes.size(); i++)
-		{
-			// --- FIX START: Skip empty meshes ---
-			if (gemmeshes[i].verticesAnimated.size() == 0) {
-				continue; // Skip this mesh to avoid crashing on &vertices[0]
-			}
-			// --- FIX END ---
+		for (int i = 0; i < gemmeshes.size(); i++) {
 			Mesh* mesh = new Mesh();
 			std::vector<ANIMATED_VERTEX> vertices;
-			for (int j = 0; j < gemmeshes[i].verticesAnimated.size(); j++)
-			{
+
+			for (int j = 0; j < gemmeshes[i].verticesAnimated.size(); j++) {
 				ANIMATED_VERTEX v;
 				memcpy(&v, &gemmeshes[i].verticesAnimated[j], sizeof(ANIMATED_VERTEX));
 				vertices.push_back(v);
 			}
 			mesh->init(core, vertices, gemmeshes[i].indices);
-
-			char buf[128];
-			sprintf_s(buf, "Animated mesh indices: %u\n", mesh->numMeshIndices);
-			OutputDebugStringA(buf);
-
 			meshes.push_back(mesh);
 		}
 
-		// --- FIX START: Check if valid meshes exist before using meshes[0] ---
-		if (meshes.empty()) {
-			OutputDebugStringA("Error: All loaded meshes were empty or invalid.\n");
-			return;
-		}
-		// --- FIX END ---
-
-		// Load Shaders (only the matching pair; no fallback)
-		shader.LoadShaders("VSAnim.hlsl", "PSUntextured.hlsl");
-
-		if (!shader.vertexShader || !shader.pixelShader) {
-			OutputDebugStringA("CRITICAL: VSAnim.hlsl or PSUntextured.hlsl failed to compile/load. Fix HLSL build settings.\n");
-			return;
-		}
-
-		// Reflect shaders
-		shader.ReflectShaders(core, shader.pixelShader, false);
-		shader.ReflectShaders(core, shader.vertexShader, true);
-
-		// Create PSO
-		psos.createPSO(
-			core,
-			"AnimatedModelPSO",
-			shader.vertexShader,
-			shader.pixelShader,
-			meshes[0]->inputLayoutDesc
-		);
-
-		if (!psos.hasPSO("AnimatedModelPSO")) {
-			OutputDebugStringA("ERROR: AnimatedModelPSO creation failed after shader update.\n");
-			return;
-		}
-
 		memcpy(&animation.skeleton.globalInverse, &gemanimation.globalInverse, 16 * sizeof(float));
-		for (int i = 0; i < gemanimation.bones.size(); i++)
-		{
+
+		for (int i = 0; i < gemanimation.bones.size(); i++) {
 			Bone bone;
 			bone.name = gemanimation.bones[i].name;
 			memcpy(&bone.offset, &gemanimation.bones[i].offset, 16 * sizeof(float));
 			bone.parentIndex = gemanimation.bones[i].parentIndex;
 			animation.skeleton.bones.push_back(bone);
 		}
-		for (int i = 0; i < gemanimation.animations.size(); i++)
-		{
+
+		for (int i = 0; i < gemanimation.animations.size(); i++) {
 			std::string name = gemanimation.animations[i].name;
 			AnimationSequence aseq;
 			aseq.ticksPerSecond = gemanimation.animations[i].ticksPerSecond;
-			for (int j = 0; j < gemanimation.animations[i].frames.size(); j++)
-			{
+
+			for (int j = 0; j < gemanimation.animations[i].frames.size(); j++) {
 				AnimationFrame frame;
-				for (int index = 0; index < gemanimation.animations[i].frames[j].positions.size(); index++)
-				{
+
+				for (int index = 0; index < gemanimation.animations[i].frames[j].positions.size(); index++) {
 					Vec3 p;
 					Quaternion q;
 					Vec3 s;
@@ -285,34 +231,16 @@ public:
 					memcpy(&s, &gemanimation.animations[i].frames[j].scales[index], sizeof(Vec3));
 					frame.scales.push_back(s);
 				}
+
 				aseq.frames.push_back(frame);
 			}
+
 			animation.animations.insert({ name, aseq });
 		}
 	}
-	void updateWorld(Matrix& w)
-	{
-		shader.vsConstantBuffers[0]->update("W", &w);
-	}
-	void draw(Core* core, AnimationInstance* instance, Matrix& vp, Matrix& w)
-	{
-		// Begin the render pass before setting pipeline and drawing
-		core->beginRenderPass();
 
-		// Update constants first
-		shader.vsConstantBuffers[0]->update("W", &w);
-		shader.vsConstantBuffers[0]->update("VP", &vp);
-		shader.vsConstantBuffers[0]->update("bones", instance->matrices);
-
-		// Apply shaders/root signature (keep consistent with other draw paths)
-		shader.apply(core);
-
-		// Bind PSO (after apply, same pattern as Tree/Sphere)
-		psos.bind(core, "AnimatedModelPSO");
-
-		// Draw
-		for (int i = 0; i < meshes.size(); i++)
-		{
+	void draw(Core* core) {
+		for (int i = 0; i < meshes.size(); i++) {
 			meshes[i]->draw(core);
 		}
 	}

@@ -13,6 +13,7 @@
 #include "Tree.h"
 #include "Player.h"
 #include "Skybox.h"
+#include "Objects.h"
 
 using namespace std;
 
@@ -44,11 +45,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	
 	Player player;
 
-	
-
-	AnimatedModel animatedModel;
-	AnimationInstance animatedInstance;
-
 	// Creates a window
 	win.initialize("My Window", 1024, 1024); 
 
@@ -56,8 +52,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	core.init(win.hwnd, 1024, 1024);   
 
 	// Then initialize GPU-dependent assets
+	animatedModel animatedModel;
 	animatedModel.init(&core, "Resources/Models/TRex.gem");
-	animatedInstance.init(&animatedModel.animation, 0);
+	AnimationInstance animatedInstance;
+	animatedInstance.init(&animatedModel.mesh.animation, 0);
+	
 	for (int i = 0; i < 256; ++i) animatedInstance.matrices[i].identity();
 
 	// Initialises the plane/cube/sphere
@@ -97,7 +96,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		player.update(dt, win.keys);
 
 		//Matrix vp = player.OrbitCamera(win, t);
-		Matrix vp = player.NewCamera(win, player.position, t);
+		Matrix vp = player.OrbitCamera(win, t);
 
 		//// Orbit camera around origin (old behavior)
 		//float aspect = (float)win.width / (float)win.height;
