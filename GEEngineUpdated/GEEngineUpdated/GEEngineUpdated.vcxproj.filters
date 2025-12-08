@@ -42,9 +42,6 @@
     <ClInclude Include="ScreenSpaceTriangle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Static_Vertex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Plane.h">
       <Filter>Header Files</Filter>
     </ClInclude>

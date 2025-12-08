@@ -48,10 +48,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	float t = 0;
 
-	while (1) {
-		float dt = tim.dt();
-		t += dt;
-
+	while (true) {
+		
 		
 
 
@@ -61,13 +59,24 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		win.processMessages();
 
 		//camera things here
+		float dt = tim.dt();
+		t += dt;
+
 		float aspect = (float)win.width / (float)win.height;
-		float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
-		Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
+		float fieldOfView = 60.0f;
+		float _near = 0.01f;
+		float _far = 10000.0f;
 
-		Vec3 from = Vec3(11.0f * cosf(dt), 5.0f, 11.0f * sinf(dt));
-		Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
+	
+		Matrix p = p.perspectiveProjection(aspect, fieldOfView, _near, _far);
 
+		// Camera orbit
+		Vec3 from = Vec3(11 * cos(t), 5, 11 * sinf(t));
+
+		// View Matrix - eye, target, up
+		Matrix v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
+
+		// Combined view perspective
 		Matrix vp = p.multiply(v);
 
 		//update shaders 

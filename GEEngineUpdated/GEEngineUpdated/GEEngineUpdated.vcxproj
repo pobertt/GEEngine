@@ -138,7 +138,6 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="Tree.h" />
-    <ClInclude Include="Static_Vertex.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
