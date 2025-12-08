@@ -4,17 +4,14 @@
 #include "PipeLineState.h"
 #include "Shader.h"
 
+
 class Sphere
 {
 public:
 	// Create instance of mesh
 	Mesh mesh;
+	std::string shaderName;
 
-	// Create instance of Pipeline State Manager
-	PSOManager psos;
-
-	// Create instance of Shader
-	Shader shader;
 
 	// Helper function for plane
 	STATIC_VERTEX addVertex(Vec3 p, Vec3 n, float tu, float tv)
@@ -29,7 +26,7 @@ public:
 	}
 
 	// Implement plane, 2 triangles
-	void init(Core* core, int rings, int segments, float radius)
+	void init(Core* core, PSOManager* psos, Shaders* shaders, int rings, int segments, float radius)
 	{
 		std::vector<STATIC_VERTEX> vertices;
 		for (int lat = 0; lat <= rings; lat++) {
@@ -68,32 +65,24 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shader.LoadShaders("VertexShader.hlsl", "PixelShader.hlsl");
-
-		// Reflect shaders to populate constant buffer offsets
-		shader.ReflectShaders(core, shader.pixelShader, false);
-		shader.ReflectShaders(core, shader.vertexShader, true);
-
-		psos.createPSO(
-			core,
-			"Triangle",
-			shader.vertexShader,
-			shader.pixelShader,
-			mesh.inputLayoutDesc
-		);
+		shaders->load(core, "StaticModelUntextured", "VS.txt", "PSUntextured.txt");
+		shaderName = "StaticModelUntextured";
+		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
 	// draw function for spinning lights and pulsing triangle
-	void draw(Core* core, Matrix& w, Matrix& vp)
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
 	{
+		Matrix cubeWorld;
 		core->beginRenderPass();
 
-		shader.vsConstantBuffers[0]->update("W", &w);
-		shader.vsConstantBuffers[0]->update("VP", &vp);
-
-		shader.apply(core);
-
-		psos.bind(core, "Triangle");
+		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "VP", &vp);
+		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "W", &cubeWorld);
+		shaders->apply(core, shaderName);
+		psos->bind(core, "StaticModelUntexturedPSO");
 		mesh.draw(core);
 	}
 };
+
+
+

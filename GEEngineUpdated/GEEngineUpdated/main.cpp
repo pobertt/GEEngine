@@ -5,7 +5,6 @@
 #include "mesh.h"
 #include "Prim_Vertex.h"
 #include "ScreenSpaceTriangle.h"
-#include "ConstantBufferClass.h"
 #include "Shader.h"
 #include "Plane.h"
 #include "Cube.h"
@@ -28,22 +27,22 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	Window win;    
 
 	// create an instance object of core
-	Core core;    
+	Core core;
+	Shaders shaders;
+	PSOManager pso;
 
 	// deltaTime from Game Engineering Base
 	GamesEngineeringBase::Timer tim;
 
 	// Create instance of plane
-	Plane planeDraw;
 
 	//Create instance of a cube
-	Cube cube;
+	//Cube cube;
 
-	//Create instance of a sphere
-	Skybox SBox;
-	Tree tree;
-	
-	Player player;
+	////Create instance of a sphere
+	//Skybox SBox;
+	//
+	//Player player;
 
 	// Creates a window
 	win.initialize("My Window", 1024, 1024); 
@@ -53,7 +52,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	// Then initialize GPU-dependent assets
 	animatedModel animatedModel;
-	animatedModel.init(&core, "Resources/Models/TRex.gem");
+	animatedModel.init(&core, &pso, &shaders, "Resources/Models/TRex.gem");
 	AnimationInstance animatedInstance;
 	animatedInstance.init(&animatedModel.mesh.animation, 0);
 	
@@ -61,9 +60,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	// Initialises the plane/cube/sphere
 	//planeDraw.init(&core);
-	cube.init(&core);
-	tree.init(&core);
-	player.init(&core);
+	//cube.init(&core, &pso, &shaders);
+	//player.init(&core);
 
 	// World matrix
 	Matrix matrixWorld;
@@ -92,11 +90,20 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
+		float aspect = (float)win.width / (float)win.height;
+		float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
+		Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
+
+		Vec3 from = Vec3(11.0f * cosf(dt), 5.0f, 11.0f * sinf(dt));
+		Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
+
+		Matrix vp = p.multiply(v);
+
 		// Update player or skip if focusing on orbit camera
-		player.update(dt, win.keys);
+		//player.update(dt, win.keys);
 
 		//Matrix vp = player.OrbitCamera(win, t);
-		Matrix vp = player.OrbitCamera(win, t);
+		//Matrix vp = player.OrbitCamera(win, t);
 
 		//// Orbit camera around origin (old behavior)
 		//float aspect = (float)win.width / (float)win.height;
@@ -116,26 +123,26 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		
 		// Draw scene geometry first
 		//cube.draw(&core, matrixWorld, vp);
-		for (int i = 0; i < 1; i++) {
-			Matrix currentTreeWorld;
-			currentTreeWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
-			currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
-			tree.draw(&core, currentTreeWorld, vp);
-		}
+		//for (int i = 0; i < 1; i++) {
+		//	Matrix currentTreeWorld;
+		//	currentTreeWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		//	currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
+		//	//tree.draw(&core, currentTreeWorld, vp);
+		//}
 
 		// If you keep the animated model disabled, skip it. Otherwise:
 		animatedInstance.update("run", dt);
 		if (animatedInstance.animationFinished()) {
 			animatedInstance.resetAnimationTime();
 		}
-		animatedModel.draw(&core, &animatedInstance, vp, TRex);
+		animatedModel.draw(&core, &pso, &shaders, &animatedInstance, vp, TRex);
 
 		// Draw skybox last using its original world (centered at origin or a fixed transform)
 		//SBox.draw(&core, SkyBoxMatrix, vp);
 
 		// Draw with vp	
 		// debugFloor.draw(&core, floorWorld, vp);
-		player.draw(&core, vp);
+		//player.draw(&core, vp);
 		
 		// finished rendering
 		core.finishFrame();             

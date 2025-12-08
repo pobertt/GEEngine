@@ -13,9 +13,9 @@ public:
     float lateralSpeed;   // units/sec for A/D movement
     float forwardSpeed;   // units/sec forward
 
-    void init(Core* core)
+    void init(Core* core, PSOManager* psos, Shaders* shaders)
     {
-        cube.init(core);
+        cube.init(core, psos, shaders);
         position = Vec3(0.0f, 0.5f, 0.0f); // start slightly above the plane
         scale = Vec3(0.5f, 0.5f, 0.5f);
         lateralSpeed = 5.0f;
@@ -90,8 +90,8 @@ public:
         return p.multiply(v);
     }
 
-    void draw(Core* core, Matrix& vp)
+    void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
     {
-        cube.draw(core, world, vp);
+        cube.draw(core, psos, shaders, vp);
     }
 };

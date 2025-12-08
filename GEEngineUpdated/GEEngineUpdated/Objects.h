@@ -2,40 +2,28 @@
 #include "maths.h"
 #include "Shader.h"
 #include "Mesh.h"
-#include "Static_Vertex.h"
 
 class animatedModel {
 public:
 	AnimatedMesh mesh;
 	std::string shaderName;
-	Shader shader;
-	PSOManager psos;
 
-	void init(Core* core, std::string filename) {
+	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename) {
 		mesh.init(core, filename);
-		shader.LoadShaders("VSAnim.hlsl", "PSUntextured.hlsl");
-		shader.ReflectShaders(core, shader.vertexShader, true);
-		shader.ReflectShaders(core, shader.pixelShader, false);
-
-		psos.createPSO(
-			core,
-			"AnimatedModelPSO",
-			shader.vertexShader,
-			shader.pixelShader,
-			mesh.meshes[0]->inputLayoutDesc
-		);
+		shaders->load(core, "animatedModel", "VSAnim.hlsl", "PSUntextured.hlsl");
+		psos->createPSO(core, "animatedModelPSO", shaders->find("animatedModel")->vs, shaders->find("animatedModel")->ps, VertexLayoutCache::getAnimatedLayout());
 	}
 
-	void update(Matrix& w) {
-		shader.vsConstantBuffers[0]->update("W", &w);
+	void update(Shaders* shaders, Matrix& w) {
+		shaders->updateConstantVS("animatedModel", "staticMeshBuffer", "W", &w);
 	}
 
-	void draw(Core* core, AnimationInstance* instance, Matrix& vp, Matrix& w) {
-		psos.bind(core, "AnimatedModelPSO");
-		shader.vsConstantBuffers[0]->update("W", &w);
-		shader.vsConstantBuffers[0]->update("VP", &vp);
-		shader.vsConstantBuffers[0]->update("bones", instance->matrices);
-		shader.apply(core);
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* instance, Matrix& vp, Matrix& w) {
+		psos->bind(core, "animatedModelPSO");
+		shaders->updateConstantVS("animatedModel", "staticMeshBuffer", "W", &w);
+		shaders->updateConstantVS("animatedModel", "staticMeshBuffer", "VP", &vp);
+		shaders->updateConstantVS("animatedModel", "staticMeshBuffer", "bones", instance->matrices);
+		shaders->apply(core, "animatedModel");
 		mesh.draw(core);
 	}
 };

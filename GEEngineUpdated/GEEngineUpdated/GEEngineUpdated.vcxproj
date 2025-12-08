@@ -124,7 +124,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
-    <ClInclude Include="ConstantBufferClass.h" />
     <ClInclude Include="core.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="GamesEngineeringBase.h" />

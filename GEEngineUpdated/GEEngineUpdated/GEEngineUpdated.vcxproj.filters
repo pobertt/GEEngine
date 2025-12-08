@@ -36,9 +36,6 @@
     <ClInclude Include="Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ConstantBufferClass.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Prim_Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
