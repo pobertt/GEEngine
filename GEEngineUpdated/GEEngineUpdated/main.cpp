@@ -16,16 +16,15 @@ void drawTrees(Core core, Matrix& vp) {
 	
 }
 
-void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* trexAnimation, animatedModel* trex, float dt, Matrix& vp, Matrix& W) {
+void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* AnimInstance, animatedModel* AnimModel, float dt, Matrix& vp, Matrix& W, std::string anim) {
 	//t-rex
-	trexAnimation->update("roar", dt);
-	if (trexAnimation->animationFinished() == true) {
-		trexAnimation->resetAnimationTime();
+	AnimInstance->update(anim, dt);
+	if (AnimInstance->animationFinished() == true) {
+		AnimInstance->resetAnimationTime();
 	}
 	shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
-	W.scaling(Vec3(0.01f, 0.01f, 0.01f));
 	
-	trex->draw(core, psos, shaders, trexAnimation, vp, W);
+	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W);
 }
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
@@ -62,6 +61,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	AnimationInstance trexAnimation;
 	trexAnimation.init(&trex.mesh.animation, 0);
 
+	animatedModel FPSModel;
+	FPSModel.init(&core, &psos, &shaders, "Resources/Models/AutomaticCarbine.gem");
+	AnimationInstance FPSAnim;
+	FPSAnim.init(&FPSModel.mesh.animation, 0);
+
 	float t = 0;
 	float trexX = 0.0f;
 
@@ -90,7 +94,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		//plane 
 		Matrix planeM;
 		planeM.translation(Vec3(0.0f, 0.0f, 0.0f));
-		floor.draw(&core, &psos, &shaders, vp, planeM);
+		//floor.draw(&core, &psos, &shaders, vp, planeM);
 
 		//cube.draw(&core, &psos, &shaders, vp);
 		sphere.draw(&core, &psos, &shaders, vp);
@@ -103,9 +107,27 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		tree.update(&shaders, T);
 		tree.draw(&core, &psos, &shaders, vp);
 
+		//TRex Animation
 		Matrix W;
+
+		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
 		W.translation(Vec3(trexX, 0.0f, 0.0f));
-		PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, W);
+
+		// Debug: list animations and verify names (Output window)
+		trex.mesh.animation.debugListAnimations();
+		OutputDebugStringA(trex.mesh.animation.hasAnimation("roar") ? "Has \"roar\"? yes\n" : "Has \"roar\"? no\n");
+
+		FPSModel.mesh.animation.debugListAnimations();
+		OutputDebugStringA(FPSModel.mesh.animation.hasAnimation("empty reload") ? "Has \"empty reload\"? yes\n" : "Has \"empty reload\"? no\n");
+
+		// Guard: avoid calling missing animation
+		if (trex.mesh.animation.hasAnimation("roar")) {
+		    //PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, W, "roar");
+		}
+		if (FPSModel.mesh.animation.hasAnimation("10 melee attack")) {
+			
+		    PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, W, "10 melee attack");
+		}
 
 		core.finishFrame();
 	}

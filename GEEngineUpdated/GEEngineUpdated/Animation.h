@@ -86,32 +86,39 @@ class Animation
 public:
 	std::map<std::string, AnimationSequence> animations;
 	Skeleton skeleton;
-	int bonesSize()
+
+	bool hasAnimation(const std::string& name) const
 	{
-		return skeleton.bones.size();
+		return animations.find(name) != animations.end();
 	}
-	void calcFrame(std::string name, float t, int& frame, float& interpolationFact)
+
+	void debugListAnimations() const
 	{
-		animations[name].calcFrame(t, frame, interpolationFact);
+		std::string msg = "[Animation] Available animations (" + std::to_string(animations.size()) + "): ";
+		for (const auto& kv : animations) {
+			msg += "\"" + kv.first + "\" ";
+		}
+		msg += "\n";
+		OutputDebugStringA(msg.c_str());
 	}
-	Matrix interpolateBoneToGlobal(std::string name, Matrix* matrices, int baseFrame, float interpolationFact, int boneIndex)
+
+	void calcFrame(const std::string& name, float t, int& frame, float& interpolationFact)
 	{
-		return animations[name].interpolateBoneToGlobal(matrices, baseFrame, interpolationFact, &skeleton, boneIndex);
+		animations.at(name).calcFrame(t, frame, interpolationFact);
 	}
+
+	Matrix interpolateBoneToGlobal(const std::string& name, Matrix* matrices, int baseFrame, float interpolationFact, int boneIndex)
+	{
+		return animations.at(name).interpolateBoneToGlobal(matrices, baseFrame, interpolationFact, &skeleton, boneIndex);
+	}
+
+	int bonesSize() { return (int)skeleton.bones.size(); }
+
 	void calcTransforms(Matrix* matrices, Matrix coordTransform)
 	{
-		for (int i = 0; i < bonesSize(); i++)
-		{
-			matrices[i] = coordTransform * skeleton.globalInverse * matrices[i] * skeleton.bones[i].offset;//skeleton.bones[i].offset * matrices[i] * skeleton.globalInverse * coordTransform;
+		for (int i = 0; i < bonesSize(); i++) {
+			matrices[i] = coordTransform * skeleton.globalInverse * matrices[i] * skeleton.bones[i].offset;
 		}
-	}
-	bool hasAnimation(std::string name)
-	{
-		if (animations.find(name) == animations.end())
-		{
-			return false;
-		}
-		return true;
 	}
 };
 
