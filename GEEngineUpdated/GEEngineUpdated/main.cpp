@@ -57,7 +57,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		
 
 
-		core.resetCommandList();
+		//core.resetCommandList();
 		core.beginFrame();
 
 		win.processMessages();
@@ -66,14 +66,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		float dt = tim.dt();
 		t += dt;
 
+		player.update(dt, win.keys);
+
 		Matrix vp = player.OrbitCamera(win, t);
 
 		//player.update(t, win.keys);
 
 		//update shaders 
-		shaders.updateConstantVS("staticModel", "staticMeshBuffer", "VP", &vp);
+		shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
 		core.beginRenderPass();
 
+		//draw static objects
 		//plane 
 		floor.draw(&core, &psos, &shaders, vp);
 
@@ -83,17 +86,18 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		
 
 		//tree
-		Matrix W;
-		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		tree.update(&shaders, W);
+		Matrix T;
+		T.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		tree.update(&shaders, T);
 		tree.draw(&core, &psos, &shaders, vp);
 
 		//t-rex
+		Matrix W;
 		trexAnimation.update("run", dt);
 		if (trexAnimation.animationFinished() == true) {
 			trexAnimation.resetAnimationTime();
 		}
-		shaders.updateConstantVS("animatedModel", "staticMeshBuffer", "VP", &vp);
+		shaders.updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
 		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
 		trex.draw(&core, &psos, &shaders, &trexAnimation, vp, W);
 

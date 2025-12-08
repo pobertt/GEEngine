@@ -200,12 +200,13 @@ class Shaders
 {
 public:
 	std::map<std::string, Shader> shaders;
-	std::string readFile(std::string filename)
-	{
-		std::ifstream file(filename);
-		std::stringstream buffer;
-		buffer << file.rdbuf();
-		return buffer.str();
+	std::string readFile(const std::string& filename) {
+		std::ifstream file(filename, std::ios::binary);
+		if (!file) throw std::runtime_error("Failed to open shader file: " + filename);
+		std::stringstream buffer; buffer << file.rdbuf();
+		auto s = buffer.str();
+		if (s.empty()) throw std::runtime_error("Shader file empty: " + filename);
+		return s;
 	}
 	void load(Core* core, std::string shadername, std::string vsfilename, std::string psfilename)
 	{
