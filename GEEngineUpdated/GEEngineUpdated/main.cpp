@@ -96,8 +96,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// Update player or skip if focusing on orbit camera
 		player.update(dt, win.keys);
 
-		//Matrix vp = player.OrbitCamera(win, t);
-		Matrix vp = player.NewCamera(win, player.position, t);
+		Matrix vp = player.OrbitCamera(win, t);
+		//Matrix vp = player.NewCamera(win, player.position, t);
 
 		//// Orbit camera around origin (old behavior)
 		//float aspect = (float)win.width / (float)win.height;
