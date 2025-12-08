@@ -21,75 +21,46 @@ void drawTrees(Core core, Matrix& vp) {
 	
 }
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)   // similar to main which was done previously
-{
-	// creates an instance object of win
-	Window win;    
-
-	// create an instance object of core
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
+	Window win;
+	win.initialize("My Window", 1024, 1024);
 	Core core;
-	Shaders shaders;
-	PSOManager pso;
+	core.init(win.hwnd, 1024, 1024);
 
-	// deltaTime from Game Engineering Base
 	GamesEngineeringBase::Timer tim;
 
-	// Create instance of plane
+	Shaders shaders;
+	PSOManager psos;
 
-	//Create instance of a cube
-	//Cube cube;
+	//plane
+	plane floor;
+	floor.init(&core, &psos, &shaders);
 
-	////Create instance of a sphere
-	//Skybox SBox;
-	//
-	//Player player;
+	//tree
+	staticModel tree;
+	tree.init(&core, &psos, &shaders, "Resources/Models/acacia_003.gem");
 
-	// Creates a window
-	win.initialize("My Window", 1024, 1024); 
-
-	// Initializes the Direct3D12 core engine with that window
-	core.init(win.hwnd, 1024, 1024);   
-
-	// Then initialize GPU-dependent assets
-	animatedModel animatedModel;
-	animatedModel.init(&core, &pso, &shaders, "Resources/Models/TRex.gem");
-	AnimationInstance animatedInstance;
-	animatedInstance.init(&animatedModel.mesh.animation, 0);
-	
-	for (int i = 0; i < 256; ++i) animatedInstance.matrices[i].identity();
-
-	// Initialises the plane/cube/sphere
-	//planeDraw.init(&core);
-	//cube.init(&core, &pso, &shaders);
-	//player.init(&core);
-
-	// World matrix
-	Matrix matrixWorld;
-	Matrix SkyBoxMatrix;
-	Matrix TRex;
-
-	SkyBoxMatrix.translation(Vec3(0, 2, 0));
-	//SkyBoxMatrix.scaling(Vec3(1000, 1000, 1000));
-
-	TRex.scaling(Vec3(0.01f, 0.01f, 0.01f));
+	//t-rex
+	animatedModel trex;
+	trex.init(&core, &psos, &shaders, "Resources/Models/TRex.gem");
+	AnimationInstance trexAnimation;
+	trexAnimation.init(&trex.mesh.animation, 0);
 
 	float t = 0;
 
-	while (true)
-	{
-		core.beginFrame();              // begins a new rendering frame
-
-		win.processMessages();           // processes pending windows message
-
-		if (win.keys[VK_ESCAPE] == 1)   // escape key closes the window
-		{
-			break;
-		}
-
-		// Cumulative time in seconds since last frame
+	while (1) {
 		float dt = tim.dt();
 		t += dt;
 
+		
+
+
+		core.resetCommandList();
+		core.beginFrame();
+
+		win.processMessages();
+
+		//camera things here
 		float aspect = (float)win.width / (float)win.height;
 		float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
 		Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
@@ -99,59 +70,33 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		Matrix vp = p.multiply(v);
 
-		// Update player or skip if focusing on orbit camera
-		//player.update(dt, win.keys);
-
-		//Matrix vp = player.OrbitCamera(win, t);
-		//Matrix vp = player.OrbitCamera(win, t);
-
-		//// Orbit camera around origin (old behavior)
-		//float aspect = (float)win.width / (float)win.height;
-		//float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
-		//Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
-
-		//Vec3 from = Vec3(11.0f * cosf(t), 5.0f, 11.0f * sinf(t));
-		//Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
-
-		//Matrix vp = p.multiply(v);
-
+		//update shaders 
+		shaders.updateConstantVS("staticModel", "staticMeshBuffer", "VP", &vp);
 		core.beginRenderPass();
 
-		// Updates the GPU constant buffer and issues the draw call.
-		// The CPU - side buffer is copied to the GPU constant buffer
-		//planeDraw.draw(&core, matrixWorld, vp);
 		
-		// Draw scene geometry first
-		//cube.draw(&core, matrixWorld, vp);
-		//for (int i = 0; i < 1; i++) {
-		//	Matrix currentTreeWorld;
-		//	currentTreeWorld.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		//	currentTreeWorld.translation(Vec3(i * 2.0f, 0, 0));
-		//	//tree.draw(&core, currentTreeWorld, vp);
-		//}
 
-		// If you keep the animated model disabled, skip it. Otherwise:
-		animatedInstance.update("run", dt);
-		if (animatedInstance.animationFinished()) {
-			animatedInstance.resetAnimationTime();
+		//plane 
+		floor.draw(&core, &psos, &shaders, vp);
+
+		//tree
+		Matrix W;
+		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		tree.update(&shaders, W);
+		tree.draw(&core, &psos, &shaders, vp);
+
+		//t-rex
+		trexAnimation.update("run", dt);
+		if (trexAnimation.animationFinished() == true) {
+			trexAnimation.resetAnimationTime();
 		}
-		animatedModel.draw(&core, &pso, &shaders, &animatedInstance, vp, TRex);
+		shaders.updateConstantVS("animatedModel", "staticMeshBuffer", "VP", &vp);
+		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		trex.draw(&core, &psos, &shaders, &trexAnimation, vp, W);
 
-		// Draw skybox last using its original world (centered at origin or a fixed transform)
-		//SBox.draw(&core, SkyBoxMatrix, vp);
-
-		// Draw with vp	
-		// debugFloor.draw(&core, floorWorld, vp);
-		//player.draw(&core, vp);
-		
-		// finished rendering
-		core.finishFrame();             
-
+		core.finishFrame();
 	}
-	// ensures GPU commands finish
-	core.flushGraphicsQueue();         
-	
-	return 0;
+	core.flushGraphicsQueue();
 }
 
 

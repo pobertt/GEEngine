@@ -65,7 +65,7 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shaders->load(core, "StaticModelUntextured", "VS.txt", "PSUntextured.txt");
+		shaders->load(core, "StaticModelUntextured", "VS.hlsl", "PS.hlsl");
 		shaderName = "StaticModelUntextured";
 		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
 	}
