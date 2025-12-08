@@ -235,6 +235,8 @@ public:
 	}
 
 	void draw(Core* core) {
+		int v = meshes.size();
+		
 		for (int i = 0; i < meshes.size(); i++) {
 			meshes[i]->draw(core);
 		}

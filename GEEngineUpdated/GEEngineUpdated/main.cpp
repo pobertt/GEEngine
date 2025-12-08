@@ -89,7 +89,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		//t-rex
 		Matrix W;
-		trexAnimation.update("run", dt);
+		W.identity();
+		trexAnimation.update("run", t);
 		if (trexAnimation.animationFinished() == true) {
 			trexAnimation.resetAnimationTime();
 		}

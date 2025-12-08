@@ -47,7 +47,7 @@ struct AnimationSequence // This holds rescaled times
 	}
 	Quaternion interpolate(Quaternion q1, Quaternion q2, float t)
 	{
-		return Quaternion::Slerp(q1, q2, t);
+		return Quaternion::slerp(q1, q2, t);
 	}
 	float duration()
 	{
@@ -149,7 +149,8 @@ public:
 		if (name == usingAnimation)
 		{
 			t += dt;
-		} else
+		}
+		else
 		{
 			usingAnimation = name;
 			t = 0;
