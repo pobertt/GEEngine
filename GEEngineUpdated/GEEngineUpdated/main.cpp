@@ -220,27 +220,23 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		PlayerState currentState = playerAnim.getState();
 		bool isBusy = (currentState == PlayerState::Reload ||
-			currentState == PlayerState::Inspect ||
 			currentState == PlayerState::MeleeAttack ||
 			currentState == PlayerState::EmptyReload);
 
 		if (isBusy) {
-			// DO NOTHING. Wait for animation to finish.
-			// The AnimationManager will switch us back to Idle/Default automatically.
+			// Wait for these to finish naturally
 		}
-		// 2. Triggers (Actions that start a Blocking state)
 		else if (input.reload) {
 			playerAnim.changeState(PlayerState::Reload);
-		}
-		else if (input.inspect) {
-			playerAnim.changeState(PlayerState::Inspect);
 		}
 		else if (input.meleeAttack) {
 			playerAnim.changeState(PlayerState::MeleeAttack);
 		}
-		// 3. Continuous States (Interruptible)
 		else if (input.adsFire) {
 			playerAnim.changeState(PlayerState::ADSFire);
+		}
+		else if (input.ads) {
+			playerAnim.changeState(PlayerState::ADSIdle);
 		}
 		else if (input.fire) {
 			playerAnim.changeState(PlayerState::Fire);
@@ -251,13 +247,19 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		else if (input.walk) {
 			playerAnim.changeState(PlayerState::Walk);
 		}
-		else if (input.ads) {
-			// Note: Assuming 'ADSIdle' is the looping aimed state
-			playerAnim.changeState(PlayerState::ADSIdle);
+		else if (input.inspect) {
+			playerAnim.changeState(PlayerState::Inspect);
 		}
-		// 4. Default
 		else {
-			playerAnim.changeState(PlayerState::Idle);
+			if (currentState == PlayerState::Inspect) {
+				// Do nothing. Stay in Inspect state until:
+				// A. You press a different button (caught by 'else if' above)
+				// B. The animation finishes (caught by AnimationManager update)
+			}
+			else {
+				// Otherwise, nothing is happening, so stand still.
+				playerAnim.changeState(PlayerState::Idle);
+			}
 		}
 
 		playerAnim.update(dt);
