@@ -216,6 +216,7 @@ public:
 	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
 	{
 		Matrix cubeWorld;
+		cubeWorld.scaling(Vec3(20.0f, 20.0f, 20.0f));
 		core->beginRenderPass();
 
 		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "VP", &vp);

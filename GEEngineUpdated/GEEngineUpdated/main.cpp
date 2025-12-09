@@ -16,15 +16,12 @@ void drawTrees(Core core, Matrix& vp) {
 	
 }
 
-void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* AnimInstance, animatedModel* AnimModel, float dt, Matrix& vp, Matrix& W, std::string anim) {
-	//t-rex
-	AnimInstance->update(anim, dt);
-	if (AnimInstance->animationFinished() == true) {
-		AnimInstance->resetAnimationTime();
-	}
-	shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
-	
-	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W);
+void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders,
+                    AnimationInstance* AnimInstance, animatedModel* AnimModel,
+                    float dt, Matrix& vp, Matrix& W, const std::string& anim) {
+    AnimInstance->update(anim, dt);
+    shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
+    AnimModel->draw(core, psos, shaders, AnimInstance, vp, W);
 }
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
@@ -68,6 +65,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	float t = 0;
 	float trexX = 0.0f;
+	bool reloading = false;
 
 	while (true) {
 		//core.resetCommandList();
@@ -83,6 +81,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		if (win.keys['A'] == 1) { trexX += 5.0 * dt; }
 		if (win.keys['D'] == 1) { trexX -= 5.0 * dt; }
 
+		//Matrix vp = player.NewCamera(win, player.position, dt);
 		Matrix vp = player.OrbitCamera(win, t);
 
 
@@ -108,10 +107,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		tree.draw(&core, &psos, &shaders, vp);
 
 		//TRex Animation
-		Matrix W;
+		Matrix TrexM;
+		TrexM.scaling(Vec3(0.01f, 0.01f, 0.01f));
+		TrexM.translation(Vec3(trexX, 0.0f, 0.0f));
 
-		W.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		W.translation(Vec3(trexX, 0.0f, 0.0f));
+		Matrix CarbineM;
+		CarbineM.translation(Vec3(0.0f, 0.0f, 10.0f));
+		CarbineM.scaling(Vec3(0.25f, 0.25f, 0.25f));
 
 		// Debug: list animations and verify names (Output window)
 		trex.mesh.animation.debugListAnimations();
@@ -122,13 +124,44 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		// Guard: avoid calling missing animation
 		if (trex.mesh.animation.hasAnimation("roar")) {
-		    //PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, W, "roar");
-		}
-		if (FPSModel.mesh.animation.hasAnimation("10 melee attack")) {
+		    PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, TrexM, "roar");
+			if (trexAnimation.animationFinished()) {
+				trexAnimation.resetAnimationTime();
+			}
 			
-		    PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, W, "10 melee attack");
+		}
+		
+		// Start reload on key press
+		if (win.keys['R'] == 1) {
+			reloading = true;
+			FPSAnim.resetAnimationTime(); // start from 0
+			win.keys['R'] = 0;
 		}
 
+		// Reload state
+		if (reloading) {
+			const char* reloadName = "17 reload"; // or the exact name from debugListAnimations()
+			if (FPSModel.mesh.animation.hasAnimation(reloadName)) {
+				PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, CarbineM, reloadName);
+				if (FPSAnim.animationFinished()) {
+					reloading = false;               // exit reload
+					FPSAnim.resetAnimationTime();    // prepare next fire loop
+				}
+			} else {
+				OutputDebugStringA("Missing reload animation!\n");
+				reloading = false; // fail-safe to avoid being stuck
+			}
+		} else {
+			const char* fireName = "08 fire"; // verify exact name
+			if (FPSModel.mesh.animation.hasAnimation(fireName)) {
+				PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, CarbineM, fireName);
+				if (FPSAnim.animationFinished()) {
+					FPSAnim.resetAnimationTime(); // loop fire
+				}
+			} else {
+				OutputDebugStringA("Missing fire animation!\n");
+			}
+		}
 		core.finishFrame();
 	}
 	core.flushGraphicsQueue();
