@@ -8,20 +8,93 @@
 #include "Shader.h"
 #include "Objects.h"
 #include "Player.h"
+#include "AnimationManager.h"
 
 using namespace std;
 
-void drawTrees(Core core, Matrix& vp) {
-	//Create instance of static mesh
-	
+enum class PlayerState {
+	Idle,
+	ADSIdle,
+	Fire,
+	ADSFire,
+	ADSWalk,
+	Run,
+	Walk,
+	Reload,
+	EmptyReload,
+	Inspect,
+	MeleeAttack,
+};
+
+struct GameInput {
+	bool reload = false;
+	bool fire = false;
+	bool walk = false;
+	bool run = false;
+	bool inspect = false;
+	bool meleeAttack = false;
+	bool ads = false;
+	bool adsFire = false;
+};
+
+void ReadInputs(Window& win, GameInput& input) {
+	// Reset frame inputs
+	input.reload = false;
+	input.fire = false;
+	input.walk = false;
+	input.run = false;
+	input.inspect = false;
+	input.meleeAttack = false;
+	input.ads = false;
+	input.adsFire = false;
+
+	// 1. CONTINUOUS INPUTS (Do NOT set to 0)
+	// We want these to remain true as long as the key is physically held.
+	if (win.keys['W'] || win.keys['A'] || win.keys['S'] || win.keys['D']) {
+		input.walk = true;
+	}
+
+	// Check Shift only if we are already walking
+	if (input.walk && win.keys[VK_SHIFT]) {
+		input.walk = false; // Upgrade walk to run
+		input.run = true;
+	}
+
+	// ADS (Continuous Hold)
+	if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) {
+		input.ads = true;
+	}
+	// Fire (Mouse)
+	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+		input.fire = true;
+	}
+	if (input.ads && input.fire == true) {
+		input.adsFire = true;
+	}
+	// 2. TRIGGER INPUTS (Set to 0 to consume)
+	if (win.keys['R'] == 1) {
+		input.reload = true;
+		win.keys['R'] = 0;
+	}
+	if (win.keys['F'] == 1) {
+		input.inspect = true;
+		win.keys['F'] = 0;
+	}
+	if (win.keys['V'] == 1) {
+		input.meleeAttack = true;
+		win.keys['V'] = 0;
+	}
 }
 
-void PlayAnimations(Core* core, PSOManager* psos, Shaders* shaders,
-                    AnimationInstance* AnimInstance, animatedModel* AnimModel,
-                    float dt, Matrix& vp, Matrix& W, const std::string& anim) {
-    AnimInstance->update(anim, dt);
-    shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
-    AnimModel->draw(core, psos, shaders, AnimInstance, vp, W);
+void RenderCharacter(Core* core, PSOManager* psos, Shaders* shaders,
+	AnimationInstance* AnimInstance, animatedModel* AnimModel,
+	Matrix& vp, Matrix& W)
+{
+	// We assume AnimInstance->update() was already called by the Manager!
+
+	// Just call the existing draw helper in Objects.h
+	// This handles binding the PSO and updating all Constant Buffers (W, VP, Bones)
+	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W); //
 }
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
@@ -63,9 +136,37 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	AnimationInstance FPSAnim;
 	FPSAnim.init(&FPSModel.mesh.animation, 0);
 
+	AnimationManager<PlayerState> playerAnim;
+	playerAnim.init(&FPSAnim, &FPSModel, PlayerState::Idle);
+
+
+	// Map the Enum to the string names in your loaded model
+	playerAnim.addState(PlayerState::Idle, "04 idle", true);
+	playerAnim.addState(PlayerState::ADSIdle, "11 zoom idle", true);
+	playerAnim.addState(PlayerState::Fire, "08 fire", true);
+	playerAnim.addState(PlayerState::ADSFire, "13 zoom fire", true);
+	playerAnim.addState(PlayerState::ADSWalk, "12 zoom walk", true);
+	playerAnim.addState(PlayerState::Run, "07 run", true);
+	playerAnim.addState(PlayerState::Walk, "06 walk", true);
+	playerAnim.addState(PlayerState::Reload, "17 reload", false);
+	playerAnim.addState(PlayerState::EmptyReload, "18 empty reload", false);
+	playerAnim.addState(PlayerState::Inspect, "05 inspect", false);
+	playerAnim.addState(PlayerState::MeleeAttack, "10 melee attack", false);
+
+	GameInput input;
+
 	float t = 0;
 	float trexX = 0.0f;
 	bool reloading = false;
+
+	//TRex Animation
+	Matrix TrexM;
+	TrexM.scaling(Vec3(0.01f, 0.01f, 0.01f));
+	TrexM.translation(Vec3(trexX, 0.0f, 0.0f));
+
+	Matrix CarbineM;
+	CarbineM.translation(Vec3(0.0f, 0.0f, 10.0f));
+	CarbineM.scaling(Vec3(0.25f, 0.25f, 0.25f));
 
 	while (true) {
 		//core.resetCommandList();
@@ -78,17 +179,25 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		t += dt;
 
 		//player.update(t, win.keys);
-		if (win.keys['A'] == 1) { trexX += 5.0 * dt; }
-		if (win.keys['D'] == 1) { trexX -= 5.0 * dt; }
+		/*if (win.keys['A'] == 1) { trexX += 5.0 * dt; }
+		if (win.keys['D'] == 1) { trexX -= 5.0 * dt; }*/
+
+		
+
+		// Read Raw Keys
+		ReadInputs(win, input);
+		
+		
 
 		//Matrix vp = player.NewCamera(win, player.position, dt);
 		Matrix vp = player.OrbitCamera(win, t);
 
-
+		
+		
 		//update shaders 
 		shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
 		core.beginRenderPass();
-
+		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, CarbineM);
 		//draw static objects
 		//plane 
 		Matrix planeM;
@@ -106,80 +215,54 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		tree.update(&shaders, T);
 		tree.draw(&core, &psos, &shaders, vp);
 
-		//TRex Animation
-		Matrix TrexM;
-		TrexM.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		TrexM.translation(Vec3(trexX, 0.0f, 0.0f));
-
-		Matrix CarbineM;
-		CarbineM.translation(Vec3(0.0f, 0.0f, 10.0f));
-		CarbineM.scaling(Vec3(0.25f, 0.25f, 0.25f));
-
 		// Debug: list animations and verify names (Output window)
-		trex.mesh.animation.debugListAnimations();
-		OutputDebugStringA(trex.mesh.animation.hasAnimation("roar") ? "Has \"roar\"? yes\n" : "Has \"roar\"? no\n");
-
 		FPSModel.mesh.animation.debugListAnimations();
-		OutputDebugStringA(FPSModel.mesh.animation.hasAnimation("empty reload") ? "Has \"empty reload\"? yes\n" : "Has \"empty reload\"? no\n");
 
-		// Guard: avoid calling missing animation
-		if (trex.mesh.animation.hasAnimation("roar")) {
-		    PlayAnimations(&core, &psos, &shaders, &trexAnimation, &trex, dt, vp, TrexM, "roar");
-			if (trexAnimation.animationFinished()) {
-				trexAnimation.resetAnimationTime();
-			}
-			
+		PlayerState currentState = playerAnim.getState();
+		bool isBusy = (currentState == PlayerState::Reload ||
+			currentState == PlayerState::Inspect ||
+			currentState == PlayerState::MeleeAttack ||
+			currentState == PlayerState::EmptyReload);
+
+		if (isBusy) {
+			// DO NOTHING. Wait for animation to finish.
+			// The AnimationManager will switch us back to Idle/Default automatically.
 		}
-		
-		// Start reload on key press
-		if (win.keys['R'] == 1) {
-			reloading = true;
-			FPSAnim.resetAnimationTime(); // start from 0
-			win.keys['R'] = 0;
+		// 2. Triggers (Actions that start a Blocking state)
+		else if (input.reload) {
+			playerAnim.changeState(PlayerState::Reload);
+		}
+		else if (input.inspect) {
+			playerAnim.changeState(PlayerState::Inspect);
+		}
+		else if (input.meleeAttack) {
+			playerAnim.changeState(PlayerState::MeleeAttack);
+		}
+		// 3. Continuous States (Interruptible)
+		else if (input.adsFire) {
+			playerAnim.changeState(PlayerState::ADSFire);
+		}
+		else if (input.fire) {
+			playerAnim.changeState(PlayerState::Fire);
+		}
+		else if (input.run) {
+			playerAnim.changeState(PlayerState::Run);
+		}
+		else if (input.walk) {
+			playerAnim.changeState(PlayerState::Walk);
+		}
+		else if (input.ads) {
+			// Note: Assuming 'ADSIdle' is the looping aimed state
+			playerAnim.changeState(PlayerState::ADSIdle);
+		}
+		// 4. Default
+		else {
+			playerAnim.changeState(PlayerState::Idle);
 		}
 
-		// Reload state
-		if (reloading) {
-			const char* reloadName = "17 reload"; // or the exact name from debugListAnimations()
-			if (FPSModel.mesh.animation.hasAnimation(reloadName)) {
-				PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, CarbineM, reloadName);
-				if (FPSAnim.animationFinished()) {
-					reloading = false;               // exit reload
-					FPSAnim.resetAnimationTime();    // prepare next fire loop
-				}
-			} else {
-				OutputDebugStringA("Missing reload animation!\n");
-				reloading = false; // fail-safe to avoid being stuck
-			}
-		} else {
-			const char* fireName = "08 fire"; // verify exact name
-			if (FPSModel.mesh.animation.hasAnimation(fireName)) {
-				PlayAnimations(&core, &psos, &shaders, &FPSAnim, &FPSModel, dt, vp, CarbineM, fireName);
-				if (FPSAnim.animationFinished()) {
-					FPSAnim.resetAnimationTime(); // loop fire
-				}
-			} else {
-				OutputDebugStringA("Missing fire animation!\n");
-			}
-		}
+		playerAnim.update(dt);
+
 		core.finishFrame();
 	}
 	core.flushGraphicsQueue();
 }
-
-
-
-// Screen shake - changing FOV basically changing something to 5 3 4 1 2 (shaking the screen basically)
-
-// Animation file- whole header file, an example animated model class (both on moodle)
-/* We have to do slide 45 to 47
-* How it works/Implementation:
-* Define structures that hold bones and skeleton
-* Create animation sequence class
-* - Stores animation data for one animation
-* Create animation class
-* Stores skeleton and animations
-* Animation instance
-* */
-/* Animation controller is transitioning animations between each other (states) e.g. running -> dead
-*/
