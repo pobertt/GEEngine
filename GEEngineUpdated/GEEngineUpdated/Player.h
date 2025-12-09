@@ -1,101 +1,145 @@
 #pragma once
-#include "Objects.h"
-#include "maths.h"
-#include "window.h"
-#include "core.h"
+#include "Maths.h"
+#include "Window.h" // For mouse input
+#include <cmath>
 
-//REDO ALL OF THIS
-
-
-class Player
-{
+class Player {
 public:
-    Cube cube;
-    Matrix world;         // player's world transform
-    Vec3 position;        // x left/right, y up, z forward
-    Vec3 scale;           // size of the cube
-    float lateralSpeed;   // units/sec for A/D movement
-    float forwardSpeed;   // units/sec forward
+    Vec3 position;
+    Vec3 forward;
+    Vec3 right;
+    Vec3 up;
+    Vec3 worldUp;
 
-    void init(Core* core, PSOManager* psos, Shaders* shaders)
-    {
-        cube.init(core, psos, shaders);
-        position = Vec3(1.0f, 0.0f, 0.0f); // start slightly above the plane
-        scale = Vec3(0.5f, 0.5f, 0.5f);
-        lateralSpeed = 5.0f;
-        forwardSpeed = 6.0f;
-        world.identity();
-        world.scaling(scale);
-        world.translation(position);
+    float yaw;   // Left/Right
+    float pitch; // Up/Down
+
+    float speed;
+    float sensitivity;
+
+    // Initialization
+    void init(Core* core, PSOManager* psos, Shaders* shaders) {
+        position = Vec3(0.0f, 2.0f, -5.0f); // Start slightly back and up
+        worldUp = Vec3(0.0f, 1.0f, 0.0f);
+        yaw = 0.0f;
+        pitch = 0.0f;
+        speed = 10.0f;
+        sensitivity = 0.002f;
+        updateVectors();
     }
 
-    void update(float dt, const bool* keys /* from Window */)
-    {
-        // Only left/right input
-        if (keys['A'] == 1) position.x += lateralSpeed * dt;
-        if (keys['D'] == 1) position.x -= lateralSpeed * dt;
+    // Main Update Function
+    Matrix update(Window& win, float dt) {
+        handleMouse(win);
+        handleKeyboard(dt);
 
-        // Always move forward (+z)
-            position.z -= forwardSpeed * dt;
-
-        // Clamp lanes if desired (optional):
-        // position.x = std::max(-4.0f, std::min(4.0f, position.x));
-
-        // Rebuild world transform (scale -> translation)
-        world.identity();
-        world.scaling(scale);
-        world.translation(position);
-    }
-
-    Matrix OrbitCamera(Window& win, float dt) {
         float aspect = (float)win.width / (float)win.height;
-        float fovDeg = 60.0f; // if your Matrix::perspectiveProjection expects degrees
-        Matrix p; p = p.perspectiveProjection(aspect, fovDeg, 0.01f, 1000.0f);
+        float fovDeg = 60.0f;
 
-        Vec3 from = Vec3(11.0f * cosf(dt), 5.0f, 11.0f * sinf(dt));
-        Matrix v; v = v.lookAtMatrix(from, Vec3(0, 0, 0), Vec3(0, 1, 0));
+        Matrix projection;
 
-        Matrix vp = p.multiply(v);
+        projection = projection.perspectiveProjection(aspect, fovDeg, 0.1f, 1000.0f);
 
+        Vec3 target = position + forward;
+
+        Matrix view;
+        view = view.lookAtMatrix(position, target, up);
+
+        Matrix vp = projection.multiply(view);
+        
         return vp;
     }
 
-    Matrix NewCamera(Window& win, const Vec3& playerPos, float dt) {
-        float aspect = (float)win.width / (float)win.height;
+    Matrix getGunModelMatrix() {
+        float handRight = 0.0f;
+        float handDown = -0.25f;
+        float handFwd = -0.5f;
 
-        // 1. Setup Projection (Degrees)
-        Matrix p; p = p.perspectiveProjection(aspect, 60.0f, 0.01f, 1000.0f);
+  
+        Vec3 gunPos = position
+            + (right * handRight)
+            + (up * handDown)
+            + (forward * handFwd);
 
-        // 2. Define Ideal Offset
-        const float camHeight = 5.0f;
-        const float camDist = 11.0f;
+   
+        Matrix translation;
+        translation.translation(gunPos);
 
-        // The "Goal" position for this frame
-        Vec3 targetPos = Vec3(playerPos.x, playerPos.y + camHeight, playerPos.z + camDist);
+        Matrix rx;
+        rx.rotAroundX(pitch);
 
-        // 3. Smoothly Interpolate (Lerp)
-        // We use a static variable to store where the camera WAS last frame.
-        // Initialize it to targetPos so it doesn't fly in from (0,0,0) at the start.
-        static Vec3 currentCamPos = targetPos;
+        Matrix ry;
+        // PI flips it round, it was facing backwards
+        ry.rotAroundY(yaw + 3.14159f);
 
-        // Calculate smoothness (Higher 6.0f = faster/stiffer, Lower = slower/floatier)
-        float alpha = 6.0f * dt;
-        if (alpha > 1.0f) alpha = 1.0f; // Clamp to prevent overshooting
+        Matrix rotation = ry.multiply(rx);
 
-        // Linear Interpolation: Current = Current + (Target - Current) * alpha
-        currentCamPos.x += (targetPos.x - currentCamPos.x) * alpha;
-        currentCamPos.y += (targetPos.y - currentCamPos.y) * alpha;
-        currentCamPos.z += (targetPos.z - currentCamPos.z) * alpha;
-
-        // 4. Create View Matrix
-        // We look at the player's current position, but from our smoothed camera position
-        Matrix v; v = v.lookAtMatrix(currentCamPos, playerPos, Vec3(0, 1, 0));
-
-        return p.multiply(v);
+        return translation.multiply(rotation);
     }
 
-    void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w)
-    {
-        cube.draw(core, psos, shaders, vp, w);
+private:
+    void handleMouse(Window& win) {
+        POINT p;
+        if (GetCursorPos(&p)) {
+            ScreenToClient(win.hwnd, &p);
+
+            // Assuming 1024x1024 window. 
+            // Better to use win.getWidth() if available, otherwise hardcode center
+            int centerX = 1024 / 2;
+            int centerY = 1024 / 2;
+
+            float deltaX = (float)(p.x - centerX);
+            float deltaY = (float)(p.y - centerY);
+
+            // Apply rotation
+            yaw += deltaX * sensitivity;
+            pitch -= deltaY * sensitivity;
+
+            // Clamp Pitch to prevent flipping
+            if (pitch > 1.5f) pitch = 1.5f;
+            if (pitch < -1.5f) pitch = -1.5f;
+
+            // Lock Cursor to Center
+            POINT center = { centerX, centerY };
+            ClientToScreen(win.hwnd, &center);
+            SetCursorPos(center.x, center.y);
+        }
+    }
+
+    void updateVectors() {
+        // Calculate Forward based on Yaw/Pitch
+        Vec3 newForward;
+        newForward.x = sinf(yaw) * cosf(pitch);
+        newForward.y = sinf(pitch);
+        newForward.z = cosf(yaw) * cosf(pitch);
+
+        forward = newForward.normalize();
+
+        right = forward.Cross(worldUp).normalize();
+
+        up = right.Cross(forward).normalize();
+    }
+
+    void handleKeyboard(float dt) {
+        // Recalculate vectors so we move in the direction we look
+        updateVectors();
+
+        float velocity = speed * dt;
+
+        // Move Forward/Back
+        if (GetAsyncKeyState('W') & 0x8000) {
+            position = position + (forward * velocity);
+        }
+        if (GetAsyncKeyState('S') & 0x8000) {
+            position = position - (forward * velocity);
+        }
+
+        // Strafe Left/Right
+        if (GetAsyncKeyState('D') & 0x8000) {
+            position = position - (right * velocity);
+        }
+        if (GetAsyncKeyState('A') & 0x8000) {
+            position = position + (right * velocity);
+        }
     }
 };

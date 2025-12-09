@@ -37,6 +37,7 @@ struct GameInput {
 	bool adsFire = false;
 };
 
+// For animations
 void ReadInputs(Window& win, GameInput& input) {
 	// Reset frame inputs
 	input.reload = false;
@@ -108,19 +109,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	Shaders shaders;
 	PSOManager psos;
 
-	//plane
-	Plane floor;
-	floor.init(&core, &psos, &shaders);
-
-	Cube cube;
-	cube.init(&core, &psos, &shaders);
-
 	Player player;
 	player.init(&core, &psos, &shaders);
+	ShowCursor(FALSE);
 
+	//Objects
+	Plane floor;
+	floor.init(&core, &psos, &shaders);
+	Cube cube;
+	cube.init(&core, &psos, &shaders);
 	Sphere sphere;
 	sphere.init(&core, &psos, &shaders, 20, 20, 20);
-
 	//tree
 	staticModel tree;
 	tree.init(&core, &psos, &shaders, "Resources/Models/acacia_003.gem");
@@ -131,14 +130,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	AnimationInstance trexAnimation;
 	trexAnimation.init(&trex.mesh.animation, 0);
 
+	// FPSModel
 	animatedModel FPSModel;
 	FPSModel.init(&core, &psos, &shaders, "Resources/Models/AutomaticCarbine.gem");
 	AnimationInstance FPSAnim;
 	FPSAnim.init(&FPSModel.mesh.animation, 0);
 
+	// Player Animations
 	AnimationManager<PlayerState> playerAnim;
 	playerAnim.init(&FPSAnim, &FPSModel, PlayerState::Idle);
-
 
 	// Map the Enum to the string names in your loaded model
 	playerAnim.addState(PlayerState::Idle, "04 idle", true);
@@ -159,7 +159,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	float trexX = 0.0f;
 	bool reloading = false;
 
-	//TRex Animation
+	//TRex Matrix
 	Matrix TrexM;
 	TrexM.scaling(Vec3(0.01f, 0.01f, 0.01f));
 	TrexM.translation(Vec3(trexX, 0.0f, 0.0f));
@@ -174,40 +174,40 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 		win.processMessages();
 
-		//camera things here
 		float dt = tim.dt();
 		t += dt;
 
-		//player.update(t, win.keys);
-		/*if (win.keys['A'] == 1) { trexX += 5.0 * dt; }
-		if (win.keys['D'] == 1) { trexX -= 5.0 * dt; }*/
-
-		
-
 		// Read Raw Keys
 		ReadInputs(win, input);
-		
-		
 
-		//Matrix vp = player.NewCamera(win, player.position, dt);
-		Matrix vp = player.OrbitCamera(win, t);
+		// Update Camera
+		Matrix vp = player.update(win, dt);
 
-		
-		
-		//update shaders 
+		Matrix gunLogic = player.getGunModelMatrix(); // (Translation * Rotation)
+
+		// 2. Define the Scale (Keep your 0.25f scale)
+		Matrix gunScale;
+		gunScale.scaling(Vec3(0.25f, 0.25f, 0.25f));
+
+		// 3. Combine them: (Translation * Rotation) * Scale
+		// This moves/rotates the gun, then applies the size.
+		Matrix finalGunMatrix = gunLogic.multiply(gunScale);
+
 		shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
+
 		core.beginRenderPass();
-		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, CarbineM);
+
 		//draw static objects
 		//plane 
 		Matrix planeM;
 		planeM.translation(Vec3(0.0f, 0.0f, 0.0f));
-		//floor.draw(&core, &psos, &shaders, vp, planeM);
+		floor.draw(&core, &psos, &shaders, vp, planeM);
 
 		//cube.draw(&core, &psos, &shaders, vp);
 		sphere.draw(&core, &psos, &shaders, vp);
 		//player.draw(&core, &psos, &shaders, vp, planeM);
 		
+		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, finalGunMatrix);
 
 		//tree
 		Matrix T;
