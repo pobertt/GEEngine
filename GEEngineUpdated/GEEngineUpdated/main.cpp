@@ -70,3 +70,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     }
     core.flushGraphicsQueue();
 }
+
+// Things to do:
+// Add grass
+// Add a skylight
+// Add trex AI
+// Add trees into the level
+// Add collision
+// Bullets???
+// Muzzle flash???
+// Blood??? 
