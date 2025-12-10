@@ -138,6 +138,7 @@
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Textures.h" />
+    <ClInclude Include="TRex.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>

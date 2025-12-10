@@ -63,6 +63,9 @@
     <ClInclude Include="AnimationManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TRex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="window.cpp">
