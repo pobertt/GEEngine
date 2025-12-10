@@ -244,13 +244,10 @@ public:
 		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
 	}
 
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp) {
-		Matrix scale; scale.identity(); scale.scaling(Vec3(0.01f, 0.01f, 0.01f));
-		Matrix trans; trans.identity(); trans.translation(Vec3(5, 0, 0));
-		Matrix world = trans.multiply(scale);
-
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w) {
+		
 		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
-		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &world);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
 		shaders->apply(core, shaderName);
 		psos->bind(core, "staticPSO");
 		mesh.draw(core);

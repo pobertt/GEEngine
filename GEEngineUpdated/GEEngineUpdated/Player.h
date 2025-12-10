@@ -4,6 +4,7 @@
 #include "Objects.h" // For animatedModel, AnimationInstance
 #include "AnimationManager.h"
 #include "Textures.h"
+#include "Collision.h"
 
 enum class PlayerState {
     Idle,
@@ -48,6 +49,8 @@ public:
     animatedModel gunModel;
     AnimationInstance gunAnimInstance;
     AnimationManager<PlayerState> playerAnim;
+
+    BoundingBox collider;
 
     // Initialization
     void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager) {
@@ -101,6 +104,11 @@ public:
     Matrix update(Window& win, float dt) {
         GameInput input;
         processInput(win, input, dt);
+
+        // Define player size: 1 unit wide (0.5 half-width), 2 units tall (1.0 half-height)
+        Vec3 playerSize(0.5f, 1.0f, 0.5f);
+        // Center it on position (offset up by 1.0 so feet are at 0)
+        collider.set(position + Vec3(0, 1.0f, 0), playerSize);
 
         // --- State Machine Logic ---
         PlayerState currentState = playerAnim.getState();
@@ -239,5 +247,8 @@ private:
         if (GetAsyncKeyState('A') & 0x8000) {
             position = position + (right * velocity);
         }
+
+        // Sync collider with new position
+        collider.set(position + Vec3(0, 1.0f, 0), Vec3(0.5f, 1.0f, 0.5f));
     }
 };

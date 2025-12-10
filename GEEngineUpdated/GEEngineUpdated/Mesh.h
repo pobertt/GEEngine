@@ -10,6 +10,7 @@
 #include "Animation.h"
 #include "Textures.h"
 #include "Shader.h"
+#include "Collision.h"
 
 struct STATIC_VERTEX {
 	Vec3 pos;
@@ -64,6 +65,8 @@ public:
 	D3D12_INDEX_BUFFER_VIEW ibView;
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
 	unsigned int numMeshIndices;
+
+	BoundingBox boundingBox;
 
 	~Mesh() { clean(); }
 
@@ -121,11 +124,22 @@ public:
 	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices) {
 		init(core, &vertices[0], sizeof(STATIC_VERTEX), vertices.size(), &indices[0], indices.size());
 		inputLayoutDesc = VertexLayoutCache::getStaticLayout();
+
+		boundingBox = BoundingBox();
+
+		for (int i = 0; i < vertices.size(); i++) {
+			boundingBox.extend(vertices[i].pos);
+		}
 	}
 
 	void init(Core* core, std::vector<ANIMATED_VERTEX> vertices, std::vector<unsigned int> indices) {
 		init(core, &vertices[0], sizeof(ANIMATED_VERTEX), vertices.size(), &indices[0], indices.size());
 		inputLayoutDesc = VertexLayoutCache::getAnimatedLayout();
+
+		boundingBox = BoundingBox();
+		for (int i = 0; i < vertices.size(); i++) {
+			boundingBox.extend(vertices[i].pos);
+		}
 	}
 
 	void draw(Core* core) {
