@@ -31,6 +31,15 @@ enum class PlayerState {
 	MeleeAttack,
 };
 
+enum class TrexState {
+	Idle,
+	Walk,
+	Run,
+	Roar,
+	Attack,
+	Die
+};
+
 struct GameInput {
 	bool reload = false;
 	bool fire = false;
@@ -103,6 +112,7 @@ void RenderCharacter(Core* core, PSOManager* psos, Shaders* shaders,
 	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W, textureManager); //
 }
 
+
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
 	Window win;
 	win.initialize("My Window", 1024, 1024);
@@ -146,6 +156,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	AnimationManager<PlayerState> playerAnim;
 	playerAnim.init(&FPSAnim, &FPSModel, PlayerState::Idle);
 
+	AnimationManager<TrexState> trexAnimManager;
+	trexAnimManager.init(&trexAnimation, &trex, TrexState::Idle);
+
 	// Map the Enum to the string names in your loaded model
 	playerAnim.addState(PlayerState::Idle, "04 idle", true);
 	playerAnim.addState(PlayerState::ADSIdle, "11 zoom idle", true);
@@ -158,6 +171,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 	playerAnim.addState(PlayerState::EmptyReload, "18 empty reload", false);
 	playerAnim.addState(PlayerState::Inspect, "05 inspect", false);
 	playerAnim.addState(PlayerState::MeleeAttack, "10 melee attack", false);
+
+	trexAnimManager.addState(TrexState::Idle, "idle", true);  // Looping
+	trexAnimManager.addState(TrexState::Walk, "walk", true);  // Looping
+	trexAnimManager.addState(TrexState::Run, "run", true);  // Looping
+	trexAnimManager.addState(TrexState::Roar, "roar", false); // Play once
+	trexAnimManager.addState(TrexState::Attack, "attack", false); // Play once
+	trexAnimManager.addState(TrexState::Die, "death", false); // Play once
 
 	GameInput input;
 
@@ -199,6 +219,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		// This moves/rotates the gun, then applies the size.
 		Matrix finalGunMatrix = gunLogic.multiply(gunScale);
 
+		Matrix trexM;
+		trexM.scaling(Vec3(0.01f,0.01f,0.01f));
+
 		shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
 
 		core.beginRenderPass();
@@ -214,6 +237,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		//player.draw(&core, &psos, &shaders, vp, planeM);
 		
 		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, finalGunMatrix, &textureManager);
+		RenderCharacter(&core, &psos, &shaders, &trexAnimation, &trex, vp, trexM, &textureManager);
 
 		//tree
 		Matrix T;
@@ -222,7 +246,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		tree.draw(&core, &psos, &shaders, vp);
 
 		// Debug: list animations and verify names (Output window)
-		FPSModel.mesh.animation.debugListAnimations();
+		trex.mesh.animation.debugListAnimations();
 
 		PlayerState currentState = playerAnim.getState();
 		bool isBusy = (currentState == PlayerState::Reload ||
@@ -269,6 +293,30 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		}
 
 		playerAnim.update(dt);
+
+		if (win.keys['T']) {
+            trexAnimManager.changeState(TrexState::Roar);
+        }
+        // Make him walk if we press 'Y'
+        else if (win.keys['Y']) {
+            trexAnimManager.changeState(TrexState::Walk);
+        }
+        // Return to Idle if nothing else is happening
+        else {
+            TrexState currentTrexState = trexAnimManager.getState();
+            bool isAction = (currentTrexState == TrexState::Roar || currentTrexState == TrexState::Attack);
+            
+            if (!isAction) {
+                trexAnimManager.changeState(TrexState::Idle);
+            }
+        }
+
+		// UPDATE THE T-REX ANIMATION
+		trexAnimManager.update(dt);
+
+		RenderCharacter(&core, &psos, &shaders, &trexAnimation, &trex, vp, trexM, &textureManager);
+
+		
 
 		core.finishFrame();
 	}
