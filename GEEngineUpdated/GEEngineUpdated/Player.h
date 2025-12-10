@@ -135,7 +135,7 @@ public:
         // Calculate Model Matrix
         Matrix gunLogic = getGunModelMatrix();
         Matrix gunScale;
-        gunScale.scaling(Vec3(0.25f, 0.25f, 0.25f));
+        gunScale.scaling(Vec3(0.1f, 0.1f, 0.1f));
         Matrix finalGunMatrix = gunLogic.multiply(gunScale); // R * T * S order fix from previous step might apply here
 
         // Bind and Draw
@@ -149,9 +149,9 @@ public:
     
 
     Matrix getGunModelMatrix() {
-        float handRight = 0.0f;
+        float handRight = -0.25f;
         float handDown = -0.25f;
-        float handFwd = -0.5f;
+        float handFwd = 0.0f;
 
   
         Vec3 gunPos = position
