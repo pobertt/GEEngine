@@ -8,6 +8,8 @@
 
 #include "GEMLoader.h"
 #include "Animation.h"
+#include "Textures.h"
+#include "Shader.h"
 
 struct STATIC_VERTEX {
 	Vec3 pos;
@@ -177,7 +179,8 @@ public:
 	Animation animation;
 	std::vector<std::string> textureFilenames;
 
-	void init(Core* core, std::string filename) {
+
+	void init(Core* core, std::string filename, TextureManager* textureManager) {
 		GEMLoader::GEMModelLoader loader;
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		GEMLoader::GEMAnimation gemanimation;
@@ -192,7 +195,22 @@ public:
 				memcpy(&v, &gemmeshes[i].verticesAnimated[j], sizeof(ANIMATED_VERTEX));
 				vertices.push_back(v);
 			}
-			textureFilenames.push_back(gemmeshes[i].material.find("albedo").getValue());
+			// 1. Get the raw string from the model (e.g., "Models/Textures/T-rex_Base_Color_alb.png")
+			std::string rawPath = gemmeshes[i].material.find("albedo").getValue();
+
+			// 2. Extract ONLY the filename (e.g., "T-rex_Base_Color_alb.png")
+			// We look for the last slash ('/' or '\') and take everything after it.
+			size_t lastSlash = rawPath.find_last_of("\\/");
+			std::string filename = (lastSlash == std::string::npos) ? rawPath : rawPath.substr(lastSlash + 1);
+
+			// 3. Construct the clean path (e.g., "Resources/Models/Textures/T-rex_Base_Color_alb.png")
+			std::string fullPath = "Resources/Models/Textures/" + filename;
+
+			// 4. Load the texture using the clean path
+			// We use 'rawPath' as the Key (ID) so the rest of your code can find it easily,
+			// but we use 'fullPath' to actually load the file from disk.
+			textureManager->loadTexture(core, rawPath, fullPath);
+			textureFilenames.push_back(rawPath);
 			mesh->init(core, vertices, gemmeshes[i].indices);
 			meshes.push_back(mesh);
 		}
@@ -234,10 +252,9 @@ public:
 		}
 	}
 
-	void draw(Core* core) {
-		int v = meshes.size();
-		
+	void draw(Core* core, Shaders* shaders, TextureManager* textureManager) {
 		for (int i = 0; i < meshes.size(); i++) {
+			shaders->updateTexturePS(core, "animated", "tex", textureManager->find(textureFilenames[i]));
 			meshes[i]->draw(core);
 		}
 	}

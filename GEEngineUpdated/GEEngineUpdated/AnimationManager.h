@@ -58,7 +58,6 @@ public:
 			}
 			// CASE B: It is a Looping animation (like Fire or Run)
 			else {
-				// FIX: Restart the animation automatically
 				animInstance->resetAnimationTime();
 			}
 		}

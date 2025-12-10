@@ -5,7 +5,7 @@
 #include "Mesh.h"
 #include "PipelineState.h"
 #include "Shader.h"
-//#include "Textures.h"
+#include "Textures.h"
 
 class Plane {
 public:
@@ -28,7 +28,7 @@ public:
 
 		shaderName = "plane";
 		mesh.init(core, vertices, indices);
-		shaders->load(core, "plane", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
+		shaders->load(core, "plane", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
 		psos->createPSO(core, "planePSO", shaders->find("plane")->vs, shaders->find("plane")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
@@ -128,7 +128,7 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
+		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
 		shaderName = "StaticModelUntextured";
 		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
 	}
@@ -207,7 +207,7 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
+		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
 		shaderName = "StaticModelUntextured";
 		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
 	}
@@ -235,7 +235,7 @@ public:
 	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename) {
 		shaderName = "static";
 		mesh.init(core, filename);
-		shaders->load(core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
+		shaders->load(core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
 		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 		//texture->load("Resources/Models/Textures/T-rex_Base_Color_alb.png");
 	}
@@ -260,10 +260,10 @@ public:
 class animatedModel {
 public:
 	AnimatedMesh mesh;
-	std::string shaderName;
+	std::vector<std::string> textureFilenames;
 
-	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename) {
-		mesh.init(core, filename);
+	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename, TextureManager* textureManager) {
+		mesh.init(core, filename, textureManager);
 		shaders->load(core, "animated", "Resources/Shaders/VSAnimated.hlsl", "Resources/Shaders/PS.hlsl");
 		psos->createPSO(core, "animatedPSO", shaders->find("animated")->vs, shaders->find("animated")->ps, VertexLayoutCache::getAnimatedLayout());
 	}
@@ -272,12 +272,13 @@ public:
 		shaders->updateConstantVS("animated", "staticMeshBuffer", "W", &w);
 	}
 
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* instance, Matrix& vp, Matrix& w) {
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, AnimationInstance* instance, Matrix& vp, Matrix& w, TextureManager* textureManager) {
 		psos->bind(core, "animatedPSO");
 		shaders->updateConstantVS("animated", "staticMeshBuffer", "W", &w);
 		shaders->updateConstantVS("animated", "staticMeshBuffer", "VP", &vp);
 		shaders->updateConstantVS("animated", "staticMeshBuffer", "bones", instance->matrices);
 		shaders->apply(core, "animated");
-		mesh.draw(core);
+		
+		mesh.draw(core, shaders, textureManager);
 	}
 };

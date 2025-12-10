@@ -1,3 +1,6 @@
+
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "window.h"
 #include "core.h"
 #include "maths.h"
@@ -9,6 +12,8 @@
 #include "Objects.h"
 #include "Player.h"
 #include "AnimationManager.h"
+
+#include "Textures.h"
 
 using namespace std;
 
@@ -89,13 +94,13 @@ void ReadInputs(Window& win, GameInput& input) {
 
 void RenderCharacter(Core* core, PSOManager* psos, Shaders* shaders,
 	AnimationInstance* AnimInstance, animatedModel* AnimModel,
-	Matrix& vp, Matrix& W)
+	Matrix& vp, Matrix& W, TextureManager* textureManager)
 {
 	// We assume AnimInstance->update() was already called by the Manager!
 
 	// Just call the existing draw helper in Objects.h
 	// This handles binding the PSO and updating all Constant Buffers (W, VP, Bones)
-	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W); //
+	AnimModel->draw(core, psos, shaders, AnimInstance, vp, W, textureManager); //
 }
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
@@ -108,6 +113,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	Shaders shaders;
 	PSOManager psos;
+	TextureManager textureManager;
 
 	Player player;
 	player.init(&core, &psos, &shaders);
@@ -126,13 +132,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 	//t-rex
 	animatedModel trex;
-	trex.init(&core, &psos, &shaders, "Resources/Models/TRex.gem");
+	trex.init(&core, &psos, &shaders, "Resources/Models/TRex.gem", &textureManager);
 	AnimationInstance trexAnimation;
 	trexAnimation.init(&trex.mesh.animation, 0);
 
 	// FPSModel
 	animatedModel FPSModel;
-	FPSModel.init(&core, &psos, &shaders, "Resources/Models/AutomaticCarbine.gem");
+	FPSModel.init(&core, &psos, &shaders, "Resources/Models/AutomaticCarbine.gem", &textureManager);
 	AnimationInstance FPSAnim;
 	FPSAnim.init(&FPSModel.mesh.animation, 0);
 
@@ -207,7 +213,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 		sphere.draw(&core, &psos, &shaders, vp);
 		//player.draw(&core, &psos, &shaders, vp, planeM);
 		
-		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, finalGunMatrix);
+		RenderCharacter(&core, &psos, &shaders, &FPSAnim, &FPSModel, vp, finalGunMatrix, &textureManager);
 
 		//tree
 		Matrix T;
