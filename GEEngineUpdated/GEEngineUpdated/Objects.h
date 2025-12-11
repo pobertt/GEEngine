@@ -279,3 +279,60 @@ public:
 		mesh.draw(core, shaders, textureManager);
 	}
 };
+
+class InstancedMesh {
+public:
+	Mesh* meshReference;
+	ID3D12Resource* instanceBuffer;
+	D3D12_VERTEX_BUFFER_VIEW instanceView;
+	unsigned int numInstances;
+
+	void init(Core* core, Mesh* mesh, std::vector<Matrix>& instanceMatrices) {
+		meshReference = mesh;
+		numInstances = instanceMatrices.size();
+
+		unsigned int bufferSize = sizeof(Matrix) * numInstances;
+
+		D3D12_HEAP_PROPERTIES heapProps = {};
+		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+		D3D12_RESOURCE_DESC bufferDesc = {};
+		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		bufferDesc.Width = bufferSize;
+		bufferDesc.Height = 1;
+		bufferDesc.DepthOrArraySize = 1;
+		bufferDesc.MipLevels = 1;
+		bufferDesc.SampleDesc.Count = 1;
+		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		core->device->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&bufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			NULL,
+			IID_PPV_ARGS(&instanceBuffer)
+		);
+
+		void* mappedData;
+		instanceBuffer->Map(0, NULL, &mappedData);
+		memcpy(mappedData, instanceMatrices.data(), bufferSize);
+		instanceBuffer->Unmap(0, NULL);
+
+		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
+		instanceView.StrideInBytes = sizeof(Matrix);
+		instanceView.SizeInBytes = bufferSize;
+	}
+
+	void draw(Core* core) {
+		D3D12_VERTEX_BUFFER_VIEW bufferViews[2];
+		bufferViews[0] = meshReference->vbView;
+		bufferViews[1] = instanceView;
+
+		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		core->getCommandList()->IASetVertexBuffers(0, 2, bufferViews);
+		core->getCommandList()->IASetIndexBuffer(&meshReference->ibView);
+
+		core->getCommandList()->DrawIndexedInstanced(meshReference->numMeshIndices, numInstances, 0, 0, 0); 
+	}
+};

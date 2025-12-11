@@ -45,6 +45,12 @@ public:
     float speed;
     float sensitivity;
 
+    // PHYSICS VARIABLES
+    float yVelocity = 0.0f;
+    float gravity = -20.0f; // Downward acceleration
+    float jumpForce = 8.0f;
+    bool isGrounded = false; // Track if we are on the floor
+
     // Animation / Model Data
     animatedModel gunModel;
     AnimationInstance gunAnimInstance;
@@ -61,6 +67,9 @@ public:
         speed = 10.0f;
         sensitivity = 0.002f;
         updateVectors();
+
+        yVelocity = 0.0f;
+        isGrounded = false;
 
         gunModel.init(core, psos, shaders, "Resources/Models/AutomaticCarbine.gem", textureManager);
         gunAnimInstance.init(&gunModel.mesh.animation, 0);
@@ -105,12 +114,9 @@ public:
         GameInput input;
         processInput(win, input, dt);
 
-        // Define player size: 1 unit wide (0.5 half-width), 2 units tall (1.0 half-height)
         Vec3 playerSize(0.5f, 1.0f, 0.5f);
-        // Center it on position (offset up by 1.0 so feet are at 0)
         collider.set(position + Vec3(0, 1.0f, 0), playerSize);
 
-        // --- State Machine Logic ---
         PlayerState currentState = playerAnim.getState();
         bool isBusy = (currentState == PlayerState::Reload || currentState == PlayerState::MeleeAttack || currentState == PlayerState::EmptyReload);
 
@@ -144,7 +150,7 @@ public:
         Matrix gunLogic = getGunModelMatrix();
         Matrix gunScale;
         gunScale.scaling(Vec3(0.1f, 0.1f, 0.1f));
-        Matrix finalGunMatrix = gunLogic.multiply(gunScale); // R * T * S order fix from previous step might apply here
+        Matrix finalGunMatrix = gunLogic.multiply(gunScale);
 
         // Bind and Draw
         psos->bind(core, "animatedPSO");
@@ -189,8 +195,6 @@ private:
         if (GetCursorPos(&p)) {
             ScreenToClient(win.hwnd, &p);
 
-            // Assuming 1024x1024 window. 
-            // Better to use win.getWidth() if available, otherwise hardcode center
             int centerX = 1024 / 2;
             int centerY = 1024 / 2;
 
@@ -227,28 +231,34 @@ private:
     }
 
     void handleMovement(float dt) {
-        // Recalculate vectors so we move in the direction we look
         updateVectors();
-
         float velocity = speed * dt;
 
-        // Move Forward/Back
-        if (GetAsyncKeyState('W') & 0x8000) {
-            position = position + (forward * velocity);
-        }
-        if (GetAsyncKeyState('S') & 0x8000) {
-            position = position - (forward * velocity);
+        Vec3 flatForward = Vec3(forward.x, 0.0f, forward.z).normalize();
+        Vec3 flatRight = Vec3(right.x, 0.0f, right.z).normalize();
+
+        if (GetAsyncKeyState('W') & 0x8000) position = position + (flatForward * velocity);
+        if (GetAsyncKeyState('S') & 0x8000) position = position - (flatForward * velocity);
+        if (GetAsyncKeyState('D') & 0x8000) position = position - (flatRight * velocity);
+        if (GetAsyncKeyState('A') & 0x8000) position = position + (flatRight * velocity);
+
+        if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && isGrounded) {
+            yVelocity = jumpForce;
+            isGrounded = false;
         }
 
-        // Strafe Left/Right
-        if (GetAsyncKeyState('D') & 0x8000) {
-            position = position - (right * velocity);
-        }
-        if (GetAsyncKeyState('A') & 0x8000) {
-            position = position + (right * velocity);
-        }
+        yVelocity += gravity * dt;
+        position.y += yVelocity * dt;
 
-        // Sync collider with new position
+        // Ground Collision
+        if (position.y < 3.0f) {
+            position.y = 3.0f;      
+            yVelocity = 0.0f;      
+            isGrounded = true;      
+        }
+        else {
+            if (position.y > 0.01f) isGrounded = false;
+        }
         collider.set(position + Vec3(0, 1.0f, 0), Vec3(0.5f, 1.0f, 0.5f));
     }
 };

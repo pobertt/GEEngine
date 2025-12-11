@@ -86,10 +86,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             player.position = player.position + resolution;
         }
 
-        // Floor collision
-        if (player.position.y < 3.0f) {
-            player.position.y = 3.0f;
-        }
 
         // Static Draw
         Matrix planeM; planeM.translation(Vec3(0, 0, 0));
