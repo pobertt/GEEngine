@@ -336,3 +336,102 @@ public:
 		core->getCommandList()->DrawIndexedInstanced(meshReference->numMeshIndices, numInstances, 0, 0, 0); 
 	}
 };
+
+class MuzzleFlash {
+public:
+	float lifeTime = 0.0f;
+	float maxLife = 0.05f; // Flash lasts 0.05 seconds
+	bool active = false;
+
+	// We reuse your existing Plane mesh for the billboard
+	Plane* planeMesh = nullptr;
+
+	// Transform
+	Vec3 position;
+	float scale = 0.15f;
+	float randomRotation = 0.0f;
+
+	void init(Plane* mesh) {
+		planeMesh = mesh;
+		active = false;
+	}
+
+	void activate(Vec3 gunTipPos) {
+		position = gunTipPos;
+		active = true;
+		lifeTime = maxLife;
+
+		// Random Z-rotation makes it look different every shot
+		randomRotation = ((float)rand() / RAND_MAX) * 6.28f;
+	}
+
+	void update(float dt) {
+		if (!active) return;
+
+		lifeTime -= dt;
+		if (lifeTime <= 0.0f) {
+			active = false;
+		}
+	}
+
+	// [Slide 135] Screen-Aligned Billboard Logic
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* texMan, Vec3 camPos) {
+		if (!active || !planeMesh) return;
+
+		// 1. Calculate Vectors to face camera
+		// Normal points TO the camera
+		Vec3 normal = (camPos - position).normalize();
+
+		// World Up (0,1,0)
+		Vec3 upRef(0, 1, 0);
+
+		// Calculate Right vector
+		Vec3 right = upRef.Cross(normal).normalize();
+
+		// Calculate Adjusted Up vector (Gram-Schmidt)
+		Vec3 up = normal.Cross(right).normalize();
+
+		// 2. Build Rotation Matrix manually from vectors
+		Matrix rot;
+		// [ Rx  Ry  Rz  0 ]
+		// [ Ux  Uy  Uz  0 ]
+		// [ Nx  Ny  Nz  0 ]
+		// [ 0   0   0   1 ]
+		// (Note: Check your Maths.h to see if it fills rows or columns. 
+		// Standard D3D is Row Major, but math libs vary. This assumes standard View matrix logic).
+
+		// Simple Billboard Matrix:
+		rot.a[0][0] = right.x; rot.a[0][1] = right.y; rot.a[0][2] = right.z;
+		rot.a[1][0] = up.x;    rot.a[1][1] = up.y;    rot.a[1][2] = up.z;
+		rot.a[2][0] = normal.x; rot.a[2][1] = normal.y; rot.a[2][2] = normal.z;
+
+		// Apply Random Roll (Z-Rotation) to the billboard itself for variety
+		Matrix roll;
+		roll.rotAroundZ(randomRotation);
+		rot = roll.multiply(rot);
+
+		// 3. Build Final World Matrix
+		Matrix S, T;
+		S.scaling(Vec3(scale, scale, scale));
+		T.translation(position);
+
+		// Scale -> Rotate (Billboard) -> Translate
+		Matrix world = T.multiply(rot).multiply(S);
+
+		// 4. Draw
+		// Use a Transparent PSO! (Reuse your debug one or create "TransparentPSO")
+		psos->bind(core, "transparent");
+
+		// Bind Flash Texture
+		shaders->updateTexturePS(core, "static", "tex", texMan->find("MuzzleFlashTex"));
+
+		// Update Matrices
+		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &world);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
+
+		// Apply
+		shaders->apply(core, "static");
+
+		planeMesh->mesh.draw(core);
+	}
+};

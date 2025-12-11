@@ -20,6 +20,9 @@ public:
     float scale;
     Matrix transform;
 
+    bool isDead = false;
+    float health = 100.0f;
+
     BoundingBox collider;
 
     void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texMan) {
@@ -88,5 +91,18 @@ public:
 
         shaders->apply(core, "animated");
         model.mesh.draw(core, shaders, texMan);
+    }
+
+    void takeDamage(float amount) {
+        if (isDead) return;
+        health -= amount;
+        if (health <= 0) {
+            health = 0;
+            isDead = true;
+            animManager.changeState(TrexState::Die);
+        }
+        else {
+            animManager.changeState(TrexState::Roar); // React to hit
+        }
     }
 };

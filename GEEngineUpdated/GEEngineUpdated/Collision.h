@@ -36,6 +36,18 @@ struct BoundingBox {
     }
 };
 
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+    Vec3 invDirection;
+
+    Ray(Vec3 o, Vec3 d) {
+        origin = o;
+        direction = d;
+        invDirection = Vec3(1.0f / d.x, 1.0f / d.y, 1.0f / d.z);
+    }
+};
+
 class Collision {
 public:
     // Collision Detection
@@ -67,6 +79,39 @@ public:
                 else resolution.z = pdZ;
             }
 
+            return true;
+        }
+        return false;
+    }
+
+    static bool CheckRay(const Ray& r, const BoundingBox& box, float& t) {
+        // Calculate intersection t-values for X planes
+        float t1 = (box.min.x - r.origin.x) * r.invDirection.x;
+        float t2 = (box.max.x - r.origin.x) * r.invDirection.x;
+
+        // Ensure tmin is the near plane, tmax is the far plane
+        float tMin = min(t1, t2);
+        float tMax = max(t1, t2);
+
+        // Calculate intersection for Y planes
+        t1 = (box.min.y - r.origin.y) * r.invDirection.y;
+        t2 = (box.max.y - r.origin.y) * r.invDirection.y;
+
+        // Narrow the search window
+        tMin = max(tMin, min(t1, t2));
+        tMax = min(tMax, max(t1, t2));
+
+        // Calculate intersection for Z planes
+        t1 = (box.min.z - r.origin.z) * r.invDirection.z;
+        t2 = (box.max.z - r.origin.z) * r.invDirection.z;
+
+        // Final window adjustment
+        tMin = max(tMin, min(t1, t2));
+        tMax = min(tMax, max(t1, t2));
+
+        // [Slide 21] Collision exists if max >= min and the hit is in front of us
+        if (tMax >= tMin && tMax > 0) {
+            t = tMin; // Return distance to impact
             return true;
         }
 

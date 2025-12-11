@@ -9,12 +9,11 @@ class PSOManager
 {
 public:
     std::unordered_map<std::string, ID3D12PipelineState*> psos;
+
     void createPSO(Core* core, std::string name, ID3DBlob* vs, ID3DBlob* ps, D3D12_INPUT_LAYOUT_DESC layout)
     {
-        if (psos.find(name) != psos.end())
-        {
-            return;
-        }
+        if (psos.find(name) != psos.end()) return;
+
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.InputLayout = layout;
         desc.pRootSignature = core->rootSignature;
@@ -46,9 +45,7 @@ public:
             D3D12_COLOR_WRITE_ENABLE_ALL
         };
         for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
-        {
             blendDesc.RenderTarget[i] = defaultRenderTargetBlend;
-        }
         desc.BlendState = blendDesc;
 
         D3D12_DEPTH_STENCIL_DESC depthStencilDesc = {};
@@ -69,10 +66,90 @@ public:
         HRESULT hr = core->device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pso));
         psos.insert({ name, pso });
     }
+
+   // In PSOManager class
+
+    void createTransparentPSO(Core* core, std::string name, ID3DBlob* vs, ID3DBlob* ps, D3D12_INPUT_LAYOUT_DESC inputLayoutDesc, bool additive = false) {
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+        psoDesc.InputLayout = inputLayoutDesc;
+        psoDesc.pRootSignature = core->rootSignature;
+        psoDesc.VS = { reinterpret_cast<BYTE*>(vs->GetBufferPointer()), vs->GetBufferSize() };
+        psoDesc.PS = { reinterpret_cast<BYTE*>(ps->GetBufferPointer()), ps->GetBufferSize() };
+
+        // RASTERIZER
+        D3D12_RASTERIZER_DESC rasterDesc = {};
+        rasterDesc.FillMode = D3D12_FILL_MODE_SOLID;
+        rasterDesc.CullMode = D3D12_CULL_MODE_NONE; // Draw both sides
+        rasterDesc.FrontCounterClockwise = FALSE;
+        rasterDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+        rasterDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+        rasterDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+        rasterDesc.DepthClipEnable = TRUE;
+        rasterDesc.MultisampleEnable = FALSE;
+        rasterDesc.AntialiasedLineEnable = FALSE;
+        rasterDesc.ForcedSampleCount = 0;
+        rasterDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+        psoDesc.RasterizerState = rasterDesc;
+
+        // BLEND STATE
+        D3D12_BLEND_DESC blendDesc = {};
+        blendDesc.AlphaToCoverageEnable = FALSE;
+        blendDesc.IndependentBlendEnable = FALSE;
+
+        D3D12_RENDER_TARGET_BLEND_DESC rtBlend = {};
+        rtBlend.BlendEnable = TRUE;
+        rtBlend.LogicOpEnable = FALSE;
+
+        if (additive) {
+            // --- ADDITIVE BLENDING (Glowing / Fire) ---
+            rtBlend.SrcBlend = D3D12_BLEND_ONE;
+            rtBlend.DestBlend = D3D12_BLEND_ONE;
+            rtBlend.BlendOp = D3D12_BLEND_OP_ADD;
+        }
+        else {
+            // --- NORMAL ALPHA BLENDING (Glass / Windows) ---
+            rtBlend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+            rtBlend.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+            rtBlend.BlendOp = D3D12_BLEND_OP_ADD;
+        }
+
+        rtBlend.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rtBlend.DestBlendAlpha = D3D12_BLEND_ZERO;
+        rtBlend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        rtBlend.LogicOp = D3D12_LOGIC_OP_NOOP;
+        rtBlend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+        for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i) {
+            blendDesc.RenderTarget[i] = rtBlend;
+        }
+        psoDesc.BlendState = blendDesc;
+
+        // DEPTH STENCIL
+        D3D12_DEPTH_STENCIL_DESC depthDesc = {};
+        depthDesc.DepthEnable = TRUE;
+        depthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // Don't write depth
+        depthDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        depthDesc.StencilEnable = FALSE;
+        psoDesc.DepthStencilState = depthDesc;
+
+        // STANDARD
+        psoDesc.SampleMask = UINT_MAX;
+        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        psoDesc.NumRenderTargets = 1;
+        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+        psoDesc.SampleDesc.Count = 1;
+
+        ID3D12PipelineState* pso;
+        core->device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+        psos[name] = pso;
+    }
+
     void bind(Core* core, std::string name)
     {
         core->getCommandList()->SetPipelineState(psos[name]);
     }
+
     ~PSOManager()
     {
         for (auto& pso : psos)

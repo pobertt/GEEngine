@@ -1,10 +1,11 @@
 #pragma once
 #include "Maths.h"
 #include "Window.h"
-#include "Objects.h" // For animatedModel, AnimationInstance
+#include "Objects.h"
 #include "AnimationManager.h"
 #include "Textures.h"
 #include "Collision.h"
+#include "TRex.h"
 
 enum class PlayerState {
     Idle,
@@ -45,6 +46,8 @@ public:
     float speed;
     float sensitivity;
 
+    bool justFired = false; // Flag to signal a shot
+
     // PHYSICS VARIABLES
     float yVelocity = 0.0f;
     float gravity = -20.0f; // Downward acceleration
@@ -57,6 +60,8 @@ public:
     AnimationManager<PlayerState> playerAnim;
 
     BoundingBox collider;
+
+    MuzzleFlash flash;
 
     // Initialization
     void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager) {
@@ -88,6 +93,10 @@ public:
         playerAnim.addState(PlayerState::MeleeAttack, "10 melee attack", false);
     }
 
+    void setFlashMesh(Plane* p) {
+        flash.init(p);
+    }
+
     void processInput(Window& win, GameInput& input, float dt) {
         // Reset triggers
         input.reload = false; input.inspect = false; input.meleeAttack = false;
@@ -103,6 +112,21 @@ public:
         if (win.keys['R'] == 1) { input.reload = true; win.keys['R'] = 0; }
         if (win.keys['F'] == 1) { input.inspect = true; win.keys['F'] = 0; }
         if (win.keys['V'] == 1) { input.meleeAttack = true; win.keys['V'] = 0; }
+
+        static bool mouseReleased = true; // Prevents "machine gun" firing
+        justFired = false; // Reset every frame
+
+        if (input.fire) {
+            if (mouseReleased) {
+                justFired = true; // We shot this frame!
+                // Play Gun Animation here if you want
+                playerAnim.changeState(PlayerState::Fire);
+                mouseReleased = false;
+            }
+        }
+        else {
+            mouseReleased = true;
+        }
 
         // Camera Rotation
         handleMouse(win);
@@ -135,6 +159,7 @@ public:
         gunModel.mesh.animation.debugListAnimations();
 
         playerAnim.update(dt);
+        //flash.update(dt);
 
         // Return ViewProjection Matrix
         float aspect = (float)win.width / (float)win.height;
@@ -143,6 +168,46 @@ public:
         Vec3 target = position + forward;
         view = view.lookAtMatrix(position, target, up);
         return projection.multiply(view);
+    }
+
+    void handleShooting(TRex& target) {
+        // 1. Check if we fired this frame
+        if (!justFired) return;
+
+        // Reset the flag so we don't fire again next frame
+        justFired = false;
+
+        // 2. Create Ray
+        // Origin: Player Position + Eye Height (e.g., 2.0f units up)
+        Vec3 eyePos = position + Vec3(0.0f, 2.0f, 0.0f);
+        Ray shot(eyePos, forward);
+
+        // 3. Variables to store hit data
+        float hitDistance = 0.0f;
+        float maxRange = 100.0f; // Gun range
+
+        // 4. Check Collision against TRex
+        // We access the TRex passed in by reference
+        if (!target.isDead && Collision::CheckRay(shot, target.collider, hitDistance)) {
+            // Validate Range
+            if (hitDistance < maxRange && hitDistance > 0.0f) {
+                // HIT CONFIRMED!
+                // Apply damage directly to the target
+                target.takeDamage(25.0f);
+
+                // Optional: You could spawn a blood particle effect here later
+                // core->spawnParticle(shot.at(hitDistance)); 
+            }
+        }
+
+        Vec3 tip = position + (forward * 2.0f) + (right * -0.1f) + (up * -0.1f);
+
+        flash.activate(tip);
+    }
+
+    // Add this to your update()
+    void updateFlash(float dt) {
+        flash.update(dt);
     }
 
     void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* textureManager) {
@@ -159,6 +224,12 @@ public:
         shaders->updateConstantVS("animated", "staticMeshBuffer", "bones", gunAnimInstance.matrices);
         shaders->apply(core, "animated");
         gunModel.mesh.draw(core, shaders, textureManager);
+
+    }
+
+    void drawFlash(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* tm) {
+        // Pass 'position' so the billboard knows where the camera is
+        flash.draw(core, psos, shaders, vp, tm, position);
     }
     
 
