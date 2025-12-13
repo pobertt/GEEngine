@@ -20,13 +20,16 @@ public:
     float scale;
     Matrix transform;
 
+    float rotationY = 0.0f;
+    float speed = 2.5f;
+
     bool isDead = false;
     float health = 1000.0f;
 
     BoundingBox collider;
 
     void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texMan) {
-        position = Vec3(5.0f, 0.0f, 5.0f);
+        position = Vec3(25.0f, 0.0f, 5.0f);
         scale = 0.01f;
 
         // Load Assets
@@ -43,18 +46,43 @@ public:
         animManager.addState(TrexState::Die, "death", false);
     }
 
-    void update(float dt, Window& win) {
+    void update(float dt, Window& win, Vec3 playerPos) {
         // AI/logic later
 
-        Vec3 dinoSize(1.5f, 1.5f, 1.5f);
-        collider.set(position + Vec3(0, 1.5f, 0), dinoSize);
+        Vec3 dinoSize(2.0f, 4.0f, 6.0f);
+        Vec3 centerOffset(0.0f, 2.0f, 0.0f);
+        collider.set(position + centerOffset, dinoSize);
 
-        if (win.keys['T']) {
+        if (isDead) return;
+
+        Vec3 direction = playerPos - position;
+        direction.y = 0; // Ignore height (don't fly towards player)
+
+        float dist = direction.length(direction);
+
+        if (dist < 20.0f) {
+            Vec3 dirNorm = direction.normalize();
+
+            // Move Position
+            position = position + (dirNorm * speed * dt);
+
+            // Calculate Rotation (Face the player)
+            // atan2(x, z) gives the angle in radians
+            rotationY = atan2(dirNorm.x, dirNorm.z);
+
+            // Ensure Walk animation is playing
+            // (If you have an 'Idle', you could switch to it in the 'else' block)
+            if (health <= health / 2) {
+                animManager.changeState(TrexState::Walk);
+            }
+            else {
+                animManager.changeState(TrexState::Run);
+            }
+        }
+        else if (dist < 5.0f) {
             animManager.changeState(TrexState::Roar);
         }
-        else if (win.keys['Y']) {
-            animManager.changeState(TrexState::Walk);
-        }
+        
         else {
             TrexState current = animManager.getState();
             // If not playing a one-shot animation go back to idle
@@ -66,23 +94,18 @@ public:
 
         animManager.update(dt);
 
-        // Update World Matrix 
-        Matrix S, T;
-        S.scaling(Vec3(scale, scale, scale));
-        T.translation(position);
-
-        transform = T.multiply(S);
-
-        Vec3 halfSize(2.0f, 4.0f, 2.0f);
-
-        // 2. Center it correctly
-        // If the height is 8.0, the center should be at Y=4.0 so the box sits on the floor
-        Vec3 centerOffset(0.0f, 3.0f, 2.0f);
-
-        collider.set(position + centerOffset, halfSize);
+        
     }
 
     void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* texMan) {
+        // Update World Matrix 
+        Matrix S, T, R;
+        S.scaling(Vec3(scale, scale, scale));
+        R.rotAroundY(rotationY);
+        T.translation(position);
+
+        transform = T.multiply(R).multiply(S);
+
         psos->bind(core, "animatedPSO");
 
         shaders->updateConstantVS("animated", "staticMeshBuffer", "W", &transform);

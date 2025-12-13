@@ -47,7 +47,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
     Plane floor; floor.init(&core, &psos, &shaders);
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
-    // [REMOVED Cube init] (It was only for debug boxes)
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -57,12 +56,18 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     trex.init(&core, &psos, &shaders, &textureManager);
 
     staticModel tree;
-    tree.init(&core, &psos, &shaders, "Resources/Models/Grass_Sets_01b.gem", &textureManager);
+    tree.init(&core, &psos, &shaders, "Resources/Models/Ash_Tree_Full_01j.gem", &textureManager);
+    staticModel ammoBox;
+    ammoBox.init(&core, &psos, &shaders, "Resources/Models/Ammo_Boxes_01a.gem", &textureManager);
 
     // Define tree transform
     Matrix treeMatrix;
-    treeMatrix.scaling(Vec3(0.01f, 0.01f, 0.01f));
+    treeMatrix.scaling(Vec3(1.0f, 1.0f, 1.0f));
     treeMatrix.translation(Vec3(5, 0, 0));
+    // Define ammo transform
+    Matrix ammoMatrix;
+    ammoMatrix.scaling(Vec3(5.0f, 5.0f, 5.0f));
+    ammoMatrix.translation(Vec3(10, 0, 0));
 
     ShowCursor(FALSE);
 
@@ -74,19 +79,29 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
         // Logic
         Matrix vp = player.update(win, dt);
-        trex.update(dt, win);
+        trex.update(dt, win, player.position);
         tree.update(&shaders, treeMatrix);
+        ammoBox.update(&shaders, ammoMatrix);
         player.handleShooting(trex);
 
         // Render Setup
         shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
         core.beginRenderPass();
 
+        Vec3 resolution;
+
+        // Player vs TRex
+        if (Collision::CheckBoundingBox(player.collider, trex.collider, resolution)) {
+            // Push player out
+            player.position = player.position + resolution;
+        }
+
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0));
-       //floor.draw(&core, &psos, &shaders, vp, planeM);
+        floor.draw(&core, &psos, &shaders, vp, planeM);
         sphere.draw(&core, &psos, &shaders, vp);
         tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
+        ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
         trex.draw(&core, &psos, &shaders, vp, &textureManager);
         player.draw(&core, &psos, &shaders, vp, &textureManager);
 
