@@ -231,10 +231,10 @@ class staticModel {
 public:
 	StaticMesh mesh;
 	std::string shaderName;
-	//Texture* texture
-	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename) {
+	std::vector<std::string> textureFilenames;
+	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string filename, TextureManager* textureManager) {
 		shaderName = "static";
-		mesh.init(core, filename);
+		mesh.init(core, filename, textureManager);
 		shaders->load(core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
 		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 		//texture->load("Resources/Models/Textures/T-rex_Base_Color_alb.png");
@@ -244,13 +244,13 @@ public:
 		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
 	}
 
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w) {
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w, TextureManager* textureManager) {
 		
 		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
 		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
 		shaders->apply(core, shaderName);
 		psos->bind(core, "staticPSO");
-		mesh.draw(core);
+		mesh.draw(core, shaders, textureManager);
 	}
 };
 
@@ -280,60 +280,62 @@ public:
 	}
 };
 
-class InstancedMesh {
+class Grass {
 public:
-	Mesh* meshReference;
-	ID3D12Resource* instanceBuffer;
-	D3D12_VERTEX_BUFFER_VIEW instanceView;
-	unsigned int numInstances;
+	Mesh mesh;
+	std::vector<Matrix> instances;
 
-	void init(Core* core, Mesh* mesh, std::vector<Matrix>& instanceMatrices) {
-		meshReference = mesh;
-		numInstances = instanceMatrices.size();
+	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string modelFile, int count) {
+		GEMLoader::GEMModelLoader loader;
+		std::vector<GEMLoader::GEMMesh> gemmeshes;
+		loader.load(modelFile, gemmeshes);
 
-		unsigned int bufferSize = sizeof(Matrix) * numInstances;
 
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+		// Init mesh geometry
+		std::vector<STATIC_VERTEX> vertices;
+		for (int j = 0; j < gemmeshes[0].verticesStatic.size(); j++) {
+			STATIC_VERTEX v;
+			memcpy(&v, &gemmeshes[0].verticesStatic[j], sizeof(STATIC_VERTEX));
+			vertices.push_back(v);
+		}
+		mesh.init(core, vertices, gemmeshes[0].indices);
 
-		D3D12_RESOURCE_DESC bufferDesc = {};
-		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		bufferDesc.Width = bufferSize;
-		bufferDesc.Height = 1;
-		bufferDesc.DepthOrArraySize = 1;
-		bufferDesc.MipLevels = 1;
-		bufferDesc.SampleDesc.Count = 1;
-		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		for (int i = 0; i < count; i++) {
+			float rX = ((float)rand() / RAND_MAX) * 100.0f - 50.0f; // -50 to 50
+			float rZ = ((float)rand() / RAND_MAX) * 100.0f - 50.0f; // -50 to 50
+			float rScale = (0.5f + ((float)rand() / RAND_MAX) * 0.5f) * 1; // Random size
 
-		core->device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&bufferDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			NULL,
-			IID_PPV_ARGS(&instanceBuffer)
-		);
+			Matrix S, R, T;
+			S.scaling(Vec3(rScale, rScale, rScale));
+			R.rotAroundY(((float)rand() / RAND_MAX) * 6.28f);
+			T.translation(Vec3(rX, 0, rZ));
 
-		void* mappedData;
-		instanceBuffer->Map(0, NULL, &mappedData);
-		memcpy(mappedData, instanceMatrices.data(), bufferSize);
-		instanceBuffer->Unmap(0, NULL);
+			instances.push_back(T.multiply(R).multiply(S));
+		}
 
-		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
-		instanceView.StrideInBytes = sizeof(Matrix);
-		instanceView.SizeInBytes = bufferSize;
+		mesh.initInstances(core, instances);
+
+		shaders->load(core, "GrassInstanced", "Resources/Shaders/VSInstanced.hlsl", "Resources/Shaders/PS.hlsl");
+
+		// Use the NEW Instanced Layout
+		psos->createPSO(core, "GrassPSO", shaders->find("GrassInstanced")->vs, shaders->find("GrassInstanced")->ps, VertexLayoutCache::getInstancedLayout());
 	}
 
-	void draw(Core* core) {
-		D3D12_VERTEX_BUFFER_VIEW bufferViews[2];
-		bufferViews[0] = meshReference->vbView;
-		bufferViews[1] = instanceView;
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, float dt, TextureManager* texMan) {
+		psos->bind(core, "GrassPSO");
 
-		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		core->getCommandList()->IASetVertexBuffers(0, 2, bufferViews);
-		core->getCommandList()->IASetIndexBuffer(&meshReference->ibView);
+		// We ONLY send VP. 'W' is handled automatically per-instance by the vertex buffer!
+		shaders->updateConstantVS("GrassInstanced", "staticMeshBuffer", "VP", &vp);
 
-		core->getCommandList()->DrawIndexedInstanced(meshReference->numMeshIndices, numInstances, 0, 0, 0); 
+		// Update Time
+		static float t = 0; t += dt;
+		shaders->updateConstantVS("GrassInstanced", "TimeBuffer", "time", &t);
+
+		shaders->updateTexturePS(core, "GrassInstanced", "tex", texMan->find("GrassTexture")); // Ensure you load "GrassTexture"
+		shaders->apply(core, "GrassInstanced");
+
+		// Single efficient draw call
+		mesh.drawInstanced(core);
 	}
 };
 
@@ -362,7 +364,7 @@ public:
 		lifeTime = maxLife;
 
 		// Random Z-rotation makes it look different every shot
-		randomRotation = ((float)rand() / RAND_MAX) * 6.28f;
+		randomRotation = ((float)rand() / RAND_MAX) * 10.0f;
 	}
 
 	void update(float dt) {
@@ -374,32 +376,17 @@ public:
 		}
 	}
 
-	// [Slide 135] Screen-Aligned Billboard Logic
+	// Screen-Aligned Billboard Logic
 	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* texMan, Vec3 camPos) {
 		if (!active || !planeMesh) return;
 
-		// 1. Calculate Vectors to face camera
-		// Normal points TO the camera
 		Vec3 normal = (camPos - position).normalize();
-
-		// World Up (0,1,0)
 		Vec3 upRef(0, 1, 0);
-
-		// Calculate Right vector
 		Vec3 right = upRef.Cross(normal).normalize();
-
-		// Calculate Adjusted Up vector (Gram-Schmidt)
 		Vec3 up = normal.Cross(right).normalize();
 
-		// 2. Build Rotation Matrix manually from vectors
 		Matrix rot;
-		// [ Rx  Ry  Rz  0 ]
-		// [ Ux  Uy  Uz  0 ]
-		// [ Nx  Ny  Nz  0 ]
-		// [ 0   0   0   1 ]
-		// (Note: Check your Maths.h to see if it fills rows or columns. 
-		// Standard D3D is Row Major, but math libs vary. This assumes standard View matrix logic).
-
+		
 		// Simple Billboard Matrix:
 		rot.a[0][0] = right.x; rot.a[0][1] = right.y; rot.a[0][2] = right.z;
 		rot.a[1][0] = up.x;    rot.a[1][1] = up.y;    rot.a[1][2] = up.z;
@@ -410,26 +397,16 @@ public:
 		roll.rotAroundZ(randomRotation);
 		rot = roll.multiply(rot);
 
-		// 3. Build Final World Matrix
 		Matrix S, T;
 		S.scaling(Vec3(scale, scale, scale));
 		T.translation(position);
 
-		// Scale -> Rotate (Billboard) -> Translate
 		Matrix world = T.multiply(rot).multiply(S);
 
-		// 4. Draw
-		// Use a Transparent PSO! (Reuse your debug one or create "TransparentPSO")
 		psos->bind(core, "transparent");
-
-		// Bind Flash Texture
 		shaders->updateTexturePS(core, "static", "tex", texMan->find("MuzzleFlashTex"));
-
-		// Update Matrices
 		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &world);
 		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
-
-		// Apply
 		shaders->apply(core, "static");
 
 		planeMesh->mesh.draw(core);

@@ -4,6 +4,9 @@
 #include "Player.h"
 #include "TRex.h" 
 #include "Objects.h" 
+#include "Collision.h" 
+
+// [REMOVED DrawSolidBox Function]
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
     Window win;
@@ -15,23 +18,36 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     Shaders shaders;
     PSOManager psos;
     TextureManager textureManager;
-    
+
+    // --- 1. INIT SHADERS & PSOs ---
+
+    // Static Shader
     shaders.load(&core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
     psos.createPSO(&core, "staticPSO", shaders.find("static")->vs, shaders.find("static")->ps, VertexLayoutCache::getStaticLayout());
 
+    // Transparent PSO (For Muzzle Flash)
     psos.createTransparentPSO(
         &core,
-        "transparent",               
+        "transparent",
         shaders.find("static")->vs,
         shaders.find("static")->ps,
         VertexLayoutCache::getStaticLayout(),
-        true                     
+        true
     );
 
+    // [REMOVED SolidShader Loading] (It was only for debug boxes)
+
+
+    // --- 2. LOAD ASSETS ---
     textureManager.loadTexture(&core, "MuzzleFlashTex", "Resources/Models/Textures/muzzleflash.png");
+    textureManager.loadTexture(&core, "GrassTexture", "Resources/Models/Textures/TX_Grass_Sets_01a_ALB.png");
+
+    Grass grassField;
+    grassField.init(&core, &psos, &shaders, "Resources/Models/Grass_Sets_01a.gem", 10000);
 
     Plane floor; floor.init(&core, &psos, &shaders);
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
+    // [REMOVED Cube init] (It was only for debug boxes)
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -41,13 +57,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     trex.init(&core, &psos, &shaders, &textureManager);
 
     staticModel tree;
-    tree.init(&core, &psos, &shaders, "Resources/Models/acacia_003.gem");
+    tree.init(&core, &psos, &shaders, "Resources/Models/Grass_Sets_01b.gem", &textureManager);
+
+    // Define tree transform
     Matrix treeMatrix;
     treeMatrix.scaling(Vec3(0.01f, 0.01f, 0.01f));
     treeMatrix.translation(Vec3(5, 0, 0));
 
     ShowCursor(FALSE);
 
+    // --- 3. GAME LOOP ---
     while (true) {
         core.beginFrame();
         win.processMessages();
@@ -59,20 +78,23 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         tree.update(&shaders, treeMatrix);
         player.handleShooting(trex);
 
-        // Render
+        // Render Setup
         shaders.updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
         core.beginRenderPass();
 
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0));
-        floor.draw(&core, &psos, &shaders, vp, planeM);
+       //floor.draw(&core, &psos, &shaders, vp, planeM);
         sphere.draw(&core, &psos, &shaders, vp);
-        tree.draw(&core, &psos, &shaders, vp, treeMatrix);
+        tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
         trex.draw(&core, &psos, &shaders, vp, &textureManager);
         player.draw(&core, &psos, &shaders, vp, &textureManager);
 
-        // Draw Flash (Last!)
+        // Draw Transparents / Effects
         player.drawFlash(&core, &psos, &shaders, vp, &textureManager);
+        grassField.draw(&core, &psos, &shaders, vp, dt, &textureManager);
+
+        // [REMOVED Debug Drawing Section]
 
         core.finishFrame();
     }

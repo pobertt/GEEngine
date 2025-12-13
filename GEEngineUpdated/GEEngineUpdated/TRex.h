@@ -21,7 +21,7 @@ public:
     Matrix transform;
 
     bool isDead = false;
-    float health = 100.0f;
+    float health = 1000.0f;
 
     BoundingBox collider;
 

@@ -82,6 +82,10 @@ public:
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
 	unsigned int numMeshIndices;
 
+	ID3D12Resource* instanceBuffer = nullptr;
+	D3D12_VERTEX_BUFFER_VIEW instanceView;
+	unsigned int numInstances = 0;
+
 	BoundingBox boundingBox;
 
 	~Mesh() { clean(); }
@@ -158,6 +162,57 @@ public:
 		}
 	}
 
+	void initInstances(Core* core, std::vector<Matrix>& matrices) {
+		numInstances = (unsigned int)matrices.size();
+		int bufferSize = numInstances * sizeof(Matrix);
+
+		// Define Heap Properties (Default Heap)
+		D3D12_HEAP_PROPERTIES heapprops;
+		memset(&heapprops, 0, sizeof(D3D12_HEAP_PROPERTIES));
+		heapprops.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapprops.CreationNodeMask = 1;
+		heapprops.VisibleNodeMask = 1;
+
+		// Define Resource Descriptor
+		D3D12_RESOURCE_DESC desc;
+		memset(&desc, 0, sizeof(D3D12_RESOURCE_DESC));
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Width = bufferSize;
+		desc.Height = 1;
+		desc.DepthOrArraySize = 1;
+		desc.MipLevels = 1;
+		desc.SampleDesc.Count = 1;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		// Create Buffer on GPU
+		core->device->CreateCommittedResource(&heapprops, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, NULL, IID_PPV_ARGS(&instanceBuffer));
+
+		// Upload Data
+		core->uploadResource(instanceBuffer, &matrices[0], bufferSize, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+		// Create the View
+		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
+		instanceView.SizeInBytes = bufferSize;
+		instanceView.StrideInBytes = sizeof(Matrix);
+
+		// Update Layout to support instancing
+		inputLayoutDesc = VertexLayoutCache::getInstancedLayout();
+	}
+
+	void drawInstanced(Core* core) {
+		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		// Bind BOTH buffers: Slot 0 = Vertices, Slot 1 = Instances
+		D3D12_VERTEX_BUFFER_VIEW views[2] = { vbView, instanceView };
+		core->getCommandList()->IASetVertexBuffers(0, 2, views); // [cite: 442]
+
+		core->getCommandList()->IASetIndexBuffer(&ibView); // [cite: 443]
+
+		// Draw call using numInstances [cite: 444]
+		core->getCommandList()->DrawIndexedInstanced(numMeshIndices, numInstances, 0, 0, 0);
+	}
+
+	
 	void draw(Core* core) {
 		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		core->getCommandList()->IASetVertexBuffers(0, 1, &vbView);
@@ -166,9 +221,11 @@ public:
 	}
 
 	void clean() {
-		indexBuffer->Release();
-		vertexBuffer->Release();
+		if (indexBuffer) indexBuffer->Release();
+		if (vertexBuffer) vertexBuffer->Release();
+		if (instanceBuffer) instanceBuffer->Release(); // Release new buffer
 	}
+
 };
 
 
@@ -177,7 +234,7 @@ public:
 	std::vector<Mesh*> meshes;
 	std::vector<std::string> textureFilenames;
 
-	void init(Core* core, std::string filename) {
+	void init(Core* core, std::string filename, TextureManager* textureManager) {
 		GEMLoader::GEMModelLoader loader;
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		loader.load(filename, gemmeshes);
@@ -190,14 +247,23 @@ public:
 				memcpy(&v, &gemmeshes[i].verticesStatic[j], sizeof(STATIC_VERTEX));
 				vertices.push_back(v);
 			}
-			textureFilenames.push_back(gemmeshes[i].material.find("albedo").getValue());
+			std::string rawPath = gemmeshes[i].material.find("albedo").getValue();
+
+			size_t lastSlash = rawPath.find_last_of("\\/");
+			std::string filename = (lastSlash == std::string::npos) ? rawPath : rawPath.substr(lastSlash + 1);
+
+			std::string fullPath = "Resources/Models/Textures/" + filename;
+
+			textureManager->loadTexture(core, rawPath, fullPath);
+			textureFilenames.push_back(rawPath);
 			mesh->init(core, vertices, gemmeshes[i].indices);
 			meshes.push_back(mesh);
 		}
 	}
 
-	void draw(Core* core) {
+	void draw(Core* core, Shaders* shaders, TextureManager* textureManager) {
 		for (int i = 0; i < meshes.size(); i++) {
+			shaders->updateTexturePS(core, "static", "tex", textureManager->find(textureFilenames[i]));
 			meshes[i]->draw(core);
 		}
 	}
@@ -225,20 +291,13 @@ public:
 				memcpy(&v, &gemmeshes[i].verticesAnimated[j], sizeof(ANIMATED_VERTEX));
 				vertices.push_back(v);
 			}
-			// 1. Get the raw string from the model (e.g., "Models/Textures/T-rex_Base_Color_alb.png")
 			std::string rawPath = gemmeshes[i].material.find("albedo").getValue();
 
-			// 2. Extract ONLY the filename (e.g., "T-rex_Base_Color_alb.png")
-			// We look for the last slash ('/' or '\') and take everything after it.
 			size_t lastSlash = rawPath.find_last_of("\\/");
 			std::string filename = (lastSlash == std::string::npos) ? rawPath : rawPath.substr(lastSlash + 1);
 
-			// 3. Construct the clean path (e.g., "Resources/Models/Textures/T-rex_Base_Color_alb.png")
 			std::string fullPath = "Resources/Models/Textures/" + filename;
 
-			// 4. Load the texture using the clean path
-			// We use 'rawPath' as the Key (ID) so the rest of your code can find it easily,
-			// but we use 'fullPath' to actually load the file from disk.
 			textureManager->loadTexture(core, rawPath, fullPath);
 			textureFilenames.push_back(rawPath);
 			mesh->init(core, vertices, gemmeshes[i].indices);
@@ -287,5 +346,63 @@ public:
 			shaders->updateTexturePS(core, "animated", "tex", textureManager->find(textureFilenames[i]));
 			meshes[i]->draw(core);
 		}
+	}
+};
+
+
+class InstancedMesh {
+public:
+	Mesh* meshReference;
+	ID3D12Resource* instanceBuffer;
+	D3D12_VERTEX_BUFFER_VIEW instanceView;
+	unsigned int numInstances;
+
+	void init(Core* core, Mesh* mesh, std::vector<Matrix>& instanceMatrices) {
+		meshReference = mesh;
+		numInstances = instanceMatrices.size();
+
+		unsigned int bufferSize = sizeof(Matrix) * numInstances;
+
+		D3D12_HEAP_PROPERTIES heapProps = {};
+		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+		D3D12_RESOURCE_DESC bufferDesc = {};
+		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		bufferDesc.Width = bufferSize;
+		bufferDesc.Height = 1;
+		bufferDesc.DepthOrArraySize = 1;
+		bufferDesc.MipLevels = 1;
+		bufferDesc.SampleDesc.Count = 1;
+		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		core->device->CreateCommittedResource(
+			&heapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&bufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			NULL,
+			IID_PPV_ARGS(&instanceBuffer)
+		);
+
+		void* mappedData;
+		instanceBuffer->Map(0, NULL, &mappedData);
+		memcpy(mappedData, instanceMatrices.data(), bufferSize);
+		instanceBuffer->Unmap(0, NULL);
+
+		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
+		instanceView.StrideInBytes = sizeof(Matrix);
+		instanceView.SizeInBytes = bufferSize;
+	}
+
+	void draw(Core* core) {
+		D3D12_VERTEX_BUFFER_VIEW bufferViews[2];
+		bufferViews[0] = meshReference->vbView;
+		bufferViews[1] = instanceView;
+
+		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		core->getCommandList()->IASetVertexBuffers(0, 2, bufferViews);
+		core->getCommandList()->IASetIndexBuffer(&meshReference->ibView);
+
+		core->getCommandList()->DrawIndexedInstanced(meshReference->numMeshIndices, numInstances, 0, 0, 0);
 	}
 };

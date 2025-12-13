@@ -47,6 +47,7 @@ public:
     float sensitivity;
 
     bool justFired = false; // Flag to signal a shot
+    bool isFiring = false;
 
     // PHYSICS VARIABLES
     float yVelocity = 0.0f;
@@ -106,29 +107,39 @@ public:
         input.run = (input.walk && win.keys[VK_SHIFT]);
         input.ads = (GetAsyncKeyState(VK_RBUTTON) & 0x8000);
         input.fire = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
-        input.adsFire = (input.ads && input.fire);
+
+        isFiring = input.fire;
 
         // Triggers
         if (win.keys['R'] == 1) { input.reload = true; win.keys['R'] = 0; }
         if (win.keys['F'] == 1) { input.inspect = true; win.keys['F'] = 0; }
         if (win.keys['V'] == 1) { input.meleeAttack = true; win.keys['V'] = 0; }
 
-        static bool mouseReleased = true; // Prevents "machine gun" firing
-        justFired = false; // Reset every frame
+        static bool mouseReleased = true;
+        justFired = false;
 
         if (input.fire) {
+            // Pick muzzle tip based on ADS state
+            Vec3 tip;
+            if (input.ads) {
+                // ADS: bring flash closer to sights and slightly adjust lateral/vertical offsets
+                tip = position + (forward * 4.0f) + (right * -0.2f) + (up * -0.5f);
+            } else {
+                // Hip-fire: original offsets
+                tip = position + (forward * 4.0f) + (right * -0.6f) + (up * -0.9f);
+            }
+            flash.activate(tip);
+
             if (mouseReleased) {
-                justFired = true; // We shot this frame!
-                // Play Gun Animation here if you want
+                justFired = true;
                 playerAnim.changeState(PlayerState::Fire);
                 mouseReleased = false;
             }
-        }
-        else {
+        } else {
             mouseReleased = true;
+            // Optional: flash.deactivate();
         }
 
-        // Camera Rotation
         handleMouse(win);
         handleMovement(dt);
     }
@@ -156,10 +167,10 @@ public:
             else if (currentState != PlayerState::Inspect) playerAnim.changeState(PlayerState::Idle);
         }
 
-        gunModel.mesh.animation.debugListAnimations();
+        //gunModel.mesh.animation.debugListAnimations();
 
         playerAnim.update(dt);
-        //flash.update(dt);
+        flash.update(dt);
 
         // Return ViewProjection Matrix
         float aspect = (float)win.width / (float)win.height;
@@ -170,39 +181,33 @@ public:
         return projection.multiply(view);
     }
 
+    // Continuous shooting: call this each frame with the target you want to test
     void handleShooting(TRex& target) {
-        // 1. Check if we fired this frame
-        if (!justFired) return;
+        if (isFiring) {
+            Vec3 eyePos = position + Vec3(0.0f, 2.0f, 0.0f);
+            Ray shot(eyePos, forward);
 
-        // Reset the flag so we don't fire again next frame
-        justFired = false;
+            float hitDistance = 0.0f;
+            float maxRange = 100.0f;
 
-        // 2. Create Ray
-        // Origin: Player Position + Eye Height (e.g., 2.0f units up)
-        Vec3 eyePos = position + Vec3(0.0f, 2.0f, 0.0f);
-        Ray shot(eyePos, forward);
-
-        // 3. Variables to store hit data
-        float hitDistance = 0.0f;
-        float maxRange = 100.0f; // Gun range
-
-        // 4. Check Collision against TRex
-        // We access the TRex passed in by reference
-        if (!target.isDead && Collision::CheckRay(shot, target.collider, hitDistance)) {
-            // Validate Range
-            if (hitDistance < maxRange && hitDistance > 0.0f) {
-                // HIT CONFIRMED!
-                // Apply damage directly to the target
-                target.takeDamage(25.0f);
-
-                // Optional: You could spawn a blood particle effect here later
-                // core->spawnParticle(shot.at(hitDistance)); 
+            if (!target.isDead && Collision::CheckRay(shot, target.collider, hitDistance)) {
+                if (hitDistance < maxRange && hitDistance > 0.0f) {
+                    target.takeDamage(25.0f);
+                }
             }
+
+            // Refresh tip each frame while firing (ADS-aware)
+            // If you also support ADS here, read current ADS state via GetAsyncKeyState
+            bool ads = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+            Vec3 tip = ads
+                ? position + (forward * 4.0f) + (right * -0.2f) + (up * -0.5f)
+                : position + (forward * 4.0f) + (right * -0.6f) + (up * -0.9f);
+            flash.activate(tip);
         }
 
-        Vec3 tip = position + (forward * 2.0f) + (right * -0.1f) + (up * -0.1f);
-
-        flash.activate(tip);
+        if (!isFiring) {
+            justFired = false;
+        }
     }
 
     // Add this to your update()
