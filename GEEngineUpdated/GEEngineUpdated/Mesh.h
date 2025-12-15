@@ -203,21 +203,6 @@ public:
 		}
 	}
 
-
-	void drawInstanced(Core* core) {
-		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		// Bind BOTH buffers: Slot 0 = Vertices, Slot 1 = Instances
-		D3D12_VERTEX_BUFFER_VIEW views[2] = { vbView, instanceView };
-		core->getCommandList()->IASetVertexBuffers(0, 2, views); // [cite: 442]
-
-		core->getCommandList()->IASetIndexBuffer(&ibView); // [cite: 443]
-
-		// Draw call using numInstances [cite: 444]
-		core->getCommandList()->DrawIndexedInstanced(numMeshIndices, numInstances, 0, 0, 0);
-	}
-
-	
 	void draw(Core* core) {
 		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		core->getCommandList()->IASetVertexBuffers(0, 1, &vbView);

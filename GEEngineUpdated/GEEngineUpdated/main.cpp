@@ -80,6 +80,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
         // Logic
         Matrix vp = player.update(win, dt);
+
         trex.update(dt, win, player.position);
         tree.update(&shaders, treeMatrix);
         ammoBox.update(&shaders, ammoMatrix);

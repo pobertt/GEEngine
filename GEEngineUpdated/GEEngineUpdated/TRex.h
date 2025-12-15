@@ -39,6 +39,7 @@ public:
     bool isDead = false;
     float max_health = 1000.0f;
     float health = max_health;
+    bool attacking = false;
 
     TrexState currentState;
 
@@ -79,36 +80,39 @@ public:
 
         currentState = animManager.getState();
 
-        /*std::string dist_msg = "Trex distance from player: " + std::to_string(dist);
-        dist_msg += "\n";
-        OutputDebugStringA(dist_msg.c_str());*/
-        if (dist < 5.0f) {
-            animManager.changeState(TrexState::Attack);
-        }
-        else if (dist < 20.0f) {
-            Vec3 dirNorm = direction.normalize();
-
-            // Move Position
-            position = position + (dirNorm * speed * dt);
-
-            // Calculate Rotation (Face the player)
-            // atan2(x, z) gives the angle in radians
-            rotationY = atan2(dirNorm.x, dirNorm.z);
-
-            // Ensure Walk animation is playing
-            // (If you have an 'Idle', you could switch to it in the 'else' block)
-            if (health <= max_health / 2) {
-                animManager.changeState(TrexState::Walk);
-            }
-            else {
-                animManager.changeState(TrexState::Run);
+        if (attacking) {
+            // Keep current rotation (optional: face player)
+            // Block movement while attacking
+            if (animInstance.animationFinished()) {
+                animInstance.resetAnimationTime();
+                attacking = false;
+                // Transition after attack based on distance and health
+                if (dist < 50.0f) {
+                    animManager.changeState(health <= max_health / 2 ? TrexState::Walk : TrexState::Run);
+                }
+                else {
+                    animManager.changeState(TrexState::Idle);
+                }
             }
         }
         else {
-            
-            // If not playing a one-shot animation go back to idle
-            bool isOneShot = (currentState == TrexState::Roar || currentState == TrexState::Attack || currentState == TrexState::Die);
-            if (!isOneShot) {
+            // Not attacking: decide behavior by distance
+            if (dist < 10.0f) {
+                // Enter attack and stop moving
+                animManager.changeState(TrexState::Attack);
+                attacking = true;
+                // Face player when starting attack
+                Vec3 dirNorm = direction.normalize();
+                rotationY = atan2(dirNorm.x, dirNorm.z);
+            }
+            else if (dist < 50.0f) {
+                // Move toward player
+                Vec3 dirNorm = direction.normalize();
+                position = position + (dirNorm * speed * dt);
+                rotationY = atan2(dirNorm.x, dirNorm.z);
+                animManager.changeState(health <= max_health / 2 ? TrexState::Walk : TrexState::Run);
+            }
+            else {
                 animManager.changeState(TrexState::Idle);
             }
         }
@@ -146,8 +150,11 @@ public:
         health -= amount;
         if (health <= 0) {
             health = 0;
-            isDead = true;
+            
             animManager.changeState(TrexState::Die);
+            if (animInstance.animationFinished()) {
+                isDead = true;
+            }
         }
         else {
             animManager.changeState(TrexState::Roar); // React to hit
