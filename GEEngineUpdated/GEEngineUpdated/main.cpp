@@ -47,7 +47,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
 
     InstancedModels oakTrees;
-    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ash_Tree_Full_01j.gem", 20, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
+    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 20, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -57,13 +57,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     trex.init(&core, &psos, &shaders, &textureManager);
 
     staticModel tree;
-    tree.init(&core, &psos, &shaders, "Resources/Models/Ash_Tree_Full_01j.gem", &textureManager);
+    tree.init(&core, &psos, &shaders, "Resources/Models/maple.gem", &textureManager);
     staticModel ammoBox;
     ammoBox.init(&core, &psos, &shaders, "Resources/Models/Ammo_Boxes_01a.gem", &textureManager);
 
     // Define tree transform
     Matrix treeMatrix;
-    treeMatrix.scaling(Vec3(1.0f, 1.0f, 1.0f));
+    treeMatrix.scaling(Vec3(0.01f, 0.01f, 0.01f));
     treeMatrix.translation(Vec3(5, 0, 0));
     // Define ammo transform
     Matrix ammoMatrix;

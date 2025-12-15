@@ -196,6 +196,11 @@ public:
 
 		//set correct layout
 		inputLayoutDesc = VertexLayoutCache::getInstancedLayout();
+
+		boundingBox = BoundingBox();
+		for (int i = 0; i < vertices.size(); i++) {
+			boundingBox.extend(vertices[i].pos);
+		}
 	}
 
 
@@ -416,7 +421,7 @@ public:
 			for (size_t k = 0; k < positions.size(); ++k) {
 				Matrix S, T;
 				S.identity();
-				S.scaling(Vec3(1, 1, 1)); // keep your scale
+				S.scaling(Vec3(0.01f, 0.01f, 0.01f)); // keep your scale
 				T.identity();
 				T.translation(positions[k]);
 				instances[k].w = T.multiply(S);
@@ -434,8 +439,9 @@ public:
 		}
 	}
 
-	void draw(Core* core, UINT numOfInstances) {
+	void draw(Core* core, Shaders* shaders, TextureManager* textureManager, UINT numOfInstances) {
 		for (int i = 0; i < meshes.size(); i++) {
+			shaders->updateTexturePS(core, "instanced", "tex", textureManager->find(texture_files[i]));
 			meshes[i]->drawInstanced(core, numOfInstances);
 		}
 	}

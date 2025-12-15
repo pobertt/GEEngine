@@ -294,73 +294,13 @@ public:
 		psos->bind(core, "instancedPSO");
 		shaders->updateConstantVS("instanced", "staticMeshBuffer", "VP", &vp);
 
-		for (int i = 0; i < mesh.meshes.size(); i++) {
-            shaders->updateTexturePS(core, "instanced", "tex", texturemanager->find(mesh.texture_files[i]));
-        }
 
 		shaders->apply(core, "instanced");
-		mesh.draw(core, numOfInstances);
+
+		mesh.draw(core, shaders, texturemanager, numOfInstances);
 	}
 };
 
-//class Grass {
-//public:
-//	Mesh mesh;
-//	std::vector<Matrix> instances;
-//
-//	void init(Core* core, PSOManager* psos, Shaders* shaders, std::string modelFile, int count) {
-//		GEMLoader::GEMModelLoader loader;
-//		std::vector<GEMLoader::GEMMesh> gemmeshes;
-//		loader.load(modelFile, gemmeshes);
-//
-//
-//		// Init mesh geometry
-//		std::vector<STATIC_VERTEX> vertices;
-//		for (int j = 0; j < gemmeshes[0].verticesStatic.size(); j++) {
-//			STATIC_VERTEX v;
-//			memcpy(&v, &gemmeshes[0].verticesStatic[j], sizeof(STATIC_VERTEX));
-//			vertices.push_back(v);
-//		}
-//		mesh.init(core, vertices, gemmeshes[0].indices);
-//
-//		for (int i = 0; i < count; i++) {
-//			float rX = ((float)rand() / RAND_MAX) * 100.0f - 50.0f; // -50 to 50
-//			float rZ = ((float)rand() / RAND_MAX) * 100.0f - 50.0f; // -50 to 50
-//			float rScale = (0.5f + ((float)rand() / RAND_MAX) * 0.5f) * 1; // Random size
-//
-//			Matrix S, R, T;
-//			S.scaling(Vec3(rScale, rScale, rScale));
-//			R.rotAroundY(((float)rand() / RAND_MAX) * 6.28f);
-//			T.translation(Vec3(rX, 0, rZ));
-//
-//			instances.push_back(T.multiply(R).multiply(S));
-//		}
-//
-//		mesh.init(core, instances);
-//
-//		shaders->load(core, "GrassInstanced", "Resources/Shaders/VSInstanced.hlsl", "Resources/Shaders/PS.hlsl");
-//
-//		// Use the NEW Instanced Layout
-//		psos->createPSO(core, "GrassPSO", shaders->find("GrassInstanced")->vs, shaders->find("GrassInstanced")->ps, VertexLayoutCache::getInstancedLayout());
-//	}
-//
-//	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, float dt, TextureManager* texMan) {
-//		psos->bind(core, "GrassPSO");
-//
-//		// We ONLY send VP. 'W' is handled automatically per-instance by the vertex buffer!
-//		shaders->updateConstantVS("GrassInstanced", "staticMeshBuffer", "VP", &vp);
-//
-//		// Update Time
-//		static float t = 0; t += dt;
-//		shaders->updateConstantVS("GrassInstanced", "TimeBuffer", "time", &t);
-//
-//		shaders->updateTexturePS(core, "GrassInstanced", "tex", texMan->find("GrassTexture")); // Ensure you load "GrassTexture"
-//		shaders->apply(core, "GrassInstanced");
-//
-//		// Single efficient draw call
-//		mesh.drawInstanced(core);
-//	}
-//};
 
 class MuzzleFlash {
 public:
