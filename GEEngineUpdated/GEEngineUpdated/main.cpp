@@ -42,11 +42,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     textureManager.loadTexture(&core, "MuzzleFlashTex", "Resources/Models/Textures/muzzleflash.png");
     textureManager.loadTexture(&core, "GrassTexture", "Resources/Models/Textures/TX_Grass_Sets_01a_ALB.png");
 
-    Grass grassField;
-    grassField.init(&core, &psos, &shaders, "Resources/Models/Grass_Sets_01a.gem", 10000);
 
     Plane floor; floor.init(&core, &psos, &shaders);
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
+
+    InstancedModels oakTrees;
+    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ash_Tree_Full_01j.gem", 20, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -96,6 +97,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             player.position = player.position + resolution;
         }
 
+        
+        oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 20);
+        //should draw 5 of whatever model you put in 
+
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0));
         floor.draw(&core, &psos, &shaders, vp, planeM);
@@ -107,7 +112,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
         // Draw Transparents / Effects
         player.drawFlash(&core, &psos, &shaders, vp, &textureManager);
-        grassField.draw(&core, &psos, &shaders, vp, dt, &textureManager);
 
         // [REMOVED Debug Drawing Section]
 

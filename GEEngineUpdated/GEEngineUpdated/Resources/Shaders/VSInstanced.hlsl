@@ -1,51 +1,33 @@
-// VS_Instanced.hlsl
-cbuffer cameraBuffer : register(b0)
+cbuffer staticMeshBuffer : register(b0)
 {
+    //float4x4 W;
     float4x4 VP;
 };
 
 struct VS_INPUT
 {
-    float3 pos : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float2 texCoord : TEXCOORD;
-    
-    // Explicitly accept 4 vectors for the matrix to match C++ layout
-    float4 w0 : WORLD0;
-    float4 w1 : WORLD1;
-    float4 w2 : WORLD2;
-    float4 w3 : WORLD3;
+    float4 Pos : POSITION;
+    float3 Normal : NORMAL;
+    float3 Tangent : TANGENT;
+    float2 TexCoords : TEXCOORD;
+    float4x4 World : WORLD;
 };
 
-struct VS_OUTPUT
+struct PS_INPUT
 {
-    float4 pos : SV_POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float2 texCoord : TEXCOORD;
-    float3 worldPos : POSITION;
+    float4 Pos : SV_POSITION;
+    float3 Normal : NORMAL;
+    float3 Tangent : TANGENT;
+    float2 TexCoords : TEXCOORD;
 };
 
-VS_OUTPUT VS(VS_INPUT input)
+PS_INPUT VS(VS_INPUT input)
 {
-    VS_OUTPUT output;
-
-    // Reconstruct the matrix manually
-    float4x4 instanceWorld;
-    instanceWorld[0] = input.w0;
-    instanceWorld[1] = input.w1;
-    instanceWorld[2] = input.w2;
-    instanceWorld[3] = input.w3;
-
-    // Standard Math
-    float4 posWorld = mul(float4(input.pos, 1.0f), instanceWorld);
-    output.worldPos = posWorld.xyz;
-    output.pos = mul(posWorld, VP);
-    
-    output.normal = normalize(mul(input.normal, (float3x3) instanceWorld));
-    output.tangent = normalize(mul(input.tangent, (float3x3) instanceWorld));
-    output.texCoord = input.texCoord;
-
+    PS_INPUT output;
+    output.Pos = mul(input.Pos, input.World);
+    output.Pos = mul(output.Pos, VP);
+    output.Normal = mul(input.Normal, input.World);
+    output.Tangent = mul(input.Tangent, input.World);
+    output.TexCoords = input.TexCoords;
     return output;
 }

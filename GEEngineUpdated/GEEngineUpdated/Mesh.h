@@ -30,6 +30,10 @@ struct ANIMATED_VERTEX {
 	float boneWeights[4];
 };
 
+struct INSTANCE_VERTEX {
+	Matrix w;
+};
+
 class VertexLayoutCache {
 public:
 	static const D3D12_INPUT_LAYOUT_DESC& getStaticLayout() {
@@ -57,18 +61,17 @@ public:
 	}
 
 	static const D3D12_INPUT_LAYOUT_DESC& getInstancedLayout() {
-		static const D3D12_INPUT_ELEMENT_DESC inputLayoutInstanced[] = {
-
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0,  D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-			{ "WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-			{ "WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
-			{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		static const D3D12_INPUT_ELEMENT_DESC inputLayoutStaticInstanced[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
 		};
-		static const D3D12_INPUT_LAYOUT_DESC desc = { inputLayoutInstanced, 8 };
+		static const D3D12_INPUT_LAYOUT_DESC desc = { inputLayoutStaticInstanced, 8 };
 		return desc;
 	}
 };
@@ -81,6 +84,7 @@ public:
 	D3D12_INDEX_BUFFER_VIEW ibView;
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
 	unsigned int numMeshIndices;
+	D3D12_HEAP_PROPERTIES heapprops;
 
 	ID3D12Resource* instanceBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW instanceView;
@@ -91,7 +95,7 @@ public:
 	~Mesh() { clean(); }
 
 	void init(Core* core, void* vertices, int vertexSizeInBytes, int numVertices, unsigned int* indices, int numIndices) {
-		D3D12_HEAP_PROPERTIES heapprops;
+		
 		memset(&heapprops, 0, sizeof(D3D12_HEAP_PROPERTIES));
 		heapprops.Type = D3D12_HEAP_TYPE_DEFAULT;
 		heapprops.CreationNodeMask = 1;
@@ -162,42 +166,38 @@ public:
 		}
 	}
 
-	void initInstances(Core* core, std::vector<Matrix>& matrices) {
-		numInstances = (unsigned int)matrices.size();
-		int bufferSize = numInstances * sizeof(Matrix);
+	//now add another init below your others for static INSTANCED meshes - another overloaded init
+	void init(Core* core, std::vector<STATIC_VERTEX> vertices, std::vector<unsigned int> indices, std::vector<INSTANCE_VERTEX> instances) {
 
-		// Define Heap Properties (Default Heap)
-		D3D12_HEAP_PROPERTIES heapprops;
-		memset(&heapprops, 0, sizeof(D3D12_HEAP_PROPERTIES));
-		heapprops.Type = D3D12_HEAP_TYPE_DEFAULT;
-		heapprops.CreationNodeMask = 1;
-		heapprops.VisibleNodeMask = 1;
+		//first does normal init for mesh class 
+		init(core, vertices.data(), sizeof(STATIC_VERTEX), vertices.size(), indices.data(), indices.size());
 
-		// Define Resource Descriptor
-		D3D12_RESOURCE_DESC desc;
-		memset(&desc, 0, sizeof(D3D12_RESOURCE_DESC));
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = bufferSize;
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.SampleDesc.Count = 1;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		//then creates instance buffer on heap
+		D3D12_RESOURCE_DESC inbDesc = {};
+		memset(&inbDesc, 0, sizeof(D3D12_RESOURCE_DESC));
+		inbDesc.Width = instances.size() * sizeof(INSTANCE_VERTEX);
+		inbDesc.Height = 1;
+		inbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		inbDesc.DepthOrArraySize = 1;
+		inbDesc.MipLevels = 1;
+		inbDesc.SampleDesc.Count = 1;
+		inbDesc.SampleDesc.Quality = 0;
+		inbDesc.Alignment = 0;
+		inbDesc.Format = DXGI_FORMAT_UNKNOWN;
+		inbDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		inbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		// Create Buffer on GPU
-		core->device->CreateCommittedResource(&heapprops, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COMMON, NULL, IID_PPV_ARGS(&instanceBuffer));
+		core->device->CreateCommittedResource(&heapprops, D3D12_HEAP_FLAG_NONE, &inbDesc, D3D12_RESOURCE_STATE_COMMON, NULL, IID_PPV_ARGS(&instanceBuffer));
+		core->uploadResource(instanceBuffer, instances.data(), instances.size() * sizeof(INSTANCE_VERTEX), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-		// Upload Data
-		core->uploadResource(instanceBuffer, &matrices[0], bufferSize, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
-		// Create the View
 		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
-		instanceView.SizeInBytes = bufferSize;
-		instanceView.StrideInBytes = sizeof(Matrix);
+		instanceView.StrideInBytes = sizeof(INSTANCE_VERTEX);
+		instanceView.SizeInBytes = instances.size() * sizeof(INSTANCE_VERTEX);
 
-		// Update Layout to support instancing
+		//set correct layout
 		inputLayoutDesc = VertexLayoutCache::getInstancedLayout();
 	}
+
 
 	void drawInstanced(Core* core) {
 		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -219,6 +219,16 @@ public:
 		core->getCommandList()->IASetIndexBuffer(&ibView);
 		core->getCommandList()->DrawIndexedInstanced(numMeshIndices, 1, 0, 0, 0);
 	}
+
+	void drawInstanced(Core* core, UINT numInstances) {
+		D3D12_VERTEX_BUFFER_VIEW bufferViews[2] = { vbView, instanceView };
+
+		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		core->getCommandList()->IASetVertexBuffers(0, 2, bufferViews);
+		core->getCommandList()->IASetIndexBuffer(&ibView);
+		core->getCommandList()->DrawIndexedInstanced(numMeshIndices, numInstances, 0, 0, 0);
+	}
+
 
 	void clean() {
 		if (indexBuffer) indexBuffer->Release();
@@ -352,57 +362,81 @@ public:
 
 class InstancedMesh {
 public:
-	Mesh* meshReference;
-	ID3D12Resource* instanceBuffer;
-	D3D12_VERTEX_BUFFER_VIEW instanceView;
-	unsigned int numInstances;
+	std::vector<Mesh*> meshes;
+	std::vector<std::string> texture_files;
 
-	void init(Core* core, Mesh* mesh, std::vector<Matrix>& instanceMatrices) {
-		meshReference = mesh;
-		numInstances = instanceMatrices.size();
+	// Generate random instance transforms internally with minimum spacing in XZ
+	void init(Core* core, std::string file, TextureManager* texturemanager, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
+		GEMLoader::GEMModelLoader loader;
+		std::vector<GEMLoader::GEMMesh> gemmeshes;
+		loader.load(file, gemmeshes);
 
-		unsigned int bufferSize = sizeof(Matrix) * numInstances;
+		// Simple RNG
+		auto frand = [](float a, float b) {
+			return a + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (b - a);
+		};
 
-		D3D12_HEAP_PROPERTIES heapProps = {};
-		heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+		// Generate positions with rejection sampling to enforce spacing in XZ
+		std::vector<Vec3> positions;
+		positions.reserve(numOfInstances);
+		const int maxAttemptsPerInstance = 1000;
+		for (UINT n = 0; n < numOfInstances; ++n) {
+			bool placed = false;
+			for (int attempt = 0; attempt < maxAttemptsPerInstance && !placed; ++attempt) {
+				float x = frand(rangeMinX, rangeMaxX);
+				float z = frand(rangeMinZ, rangeMaxZ);
+				Vec3 candidate(x, 0.0f, z);
 
-		D3D12_RESOURCE_DESC bufferDesc = {};
-		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		bufferDesc.Width = bufferSize;
-		bufferDesc.Height = 1;
-		bufferDesc.DepthOrArraySize = 1;
-		bufferDesc.MipLevels = 1;
-		bufferDesc.SampleDesc.Count = 1;
-		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+				bool ok = true;
+				for (const auto& p : positions) {
+					float dx = candidate.x - p.x;
+					float dz = candidate.z - p.z;
+					float dist2 = dx * dx + dz * dz;
+					if (dist2 < (minSpacing * minSpacing)) { ok = false; break; }
+				}
+				if (ok) { positions.push_back(candidate); placed = true; }
+			}
+			// If we can't place respecting spacing, relax: place anyway to avoid infinite loop.
+			if (!placed) {
+				positions.push_back(Vec3(frand(rangeMinX, rangeMaxX), 0.0f, frand(rangeMinZ, rangeMaxZ)));
+			}
+		}
 
-		core->device->CreateCommittedResource(
-			&heapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&bufferDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			NULL,
-			IID_PPV_ARGS(&instanceBuffer)
-		);
+		for (int i = 0; i < gemmeshes.size(); i++) {
+			Mesh* mesh = new Mesh();
+			std::vector<STATIC_VERTEX> vertices;
+			vertices.reserve(gemmeshes[i].verticesStatic.size());
+			for (int j = 0; j < gemmeshes[i].verticesStatic.size(); j++) {
+				STATIC_VERTEX v;
+				memcpy(&v, &gemmeshes[i].verticesStatic[j], sizeof(STATIC_VERTEX));
+				vertices.push_back(v);
+			}
 
-		void* mappedData;
-		instanceBuffer->Map(0, NULL, &mappedData);
-		memcpy(mappedData, instanceMatrices.data(), bufferSize);
-		instanceBuffer->Unmap(0, NULL);
+			std::vector<INSTANCE_VERTEX> instances(positions.size());
+			for (size_t k = 0; k < positions.size(); ++k) {
+				Matrix S, T;
+				S.identity();
+				S.scaling(Vec3(1, 1, 1)); // keep your scale
+				T.identity();
+				T.translation(positions[k]);
+				instances[k].w = T.multiply(S);
+			}
 
-		instanceView.BufferLocation = instanceBuffer->GetGPUVirtualAddress();
-		instanceView.StrideInBytes = sizeof(Matrix);
-		instanceView.SizeInBytes = bufferSize;
+			std::string rawPath = gemmeshes[i].material.find("albedo").getValue();
+			size_t lastSlash = rawPath.find_last_of("\\/");
+			std::string filename = (lastSlash == std::string::npos) ? rawPath : rawPath.substr(lastSlash + 1);
+			std::string fullPath = "Resources/Models/Textures/" + filename;
+			texturemanager->loadTexture(core, rawPath, fullPath);
+			texture_files.push_back(rawPath);
+
+			mesh->init(core, vertices, gemmeshes[i].indices, instances);
+			meshes.push_back(mesh);
+		}
 	}
 
-	void draw(Core* core) {
-		D3D12_VERTEX_BUFFER_VIEW bufferViews[2];
-		bufferViews[0] = meshReference->vbView;
-		bufferViews[1] = instanceView;
-
-		core->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		core->getCommandList()->IASetVertexBuffers(0, 2, bufferViews);
-		core->getCommandList()->IASetIndexBuffer(&meshReference->ibView);
-
-		core->getCommandList()->DrawIndexedInstanced(meshReference->numMeshIndices, numInstances, 0, 0, 0);
+	void draw(Core* core, UINT numOfInstances) {
+		for (int i = 0; i < meshes.size(); i++) {
+			meshes[i]->drawInstanced(core, numOfInstances);
+		}
 	}
 };

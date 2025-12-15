@@ -1,6 +1,6 @@
 #pragma once
 
-#pragma once
+#include <windows.h> // add at top so OutputDebugStringA is available
 #include "Objects.h"
 #include "AnimationManager.h"
 #include "window.h"
@@ -9,6 +9,19 @@
 enum class TrexState {
     Idle, Walk, Run, Roar, Attack, Die
 };
+
+// Helper: convert enum to string
+inline const char* toString(TrexState s) {
+    switch (s) {
+    case TrexState::Idle:   return "Idle";
+    case TrexState::Walk:   return "Walk";
+    case TrexState::Run:    return "Run";
+    case TrexState::Roar:   return "Roar";
+    case TrexState::Attack: return "Attack";
+    case TrexState::Die:    return "Die";
+    default:                return "Unknown";
+    }
+}
 
 class TRex {
 public:
@@ -24,7 +37,10 @@ public:
     float speed = 2.5f;
 
     bool isDead = false;
-    float health = 1000.0f;
+    float max_health = 1000.0f;
+    float health = max_health;
+
+    TrexState currentState;
 
     BoundingBox collider;
 
@@ -49,18 +65,27 @@ public:
     void update(float dt, Window& win, Vec3 playerPos) {
         // AI/logic later
 
+
         Vec3 dinoSize(2.0f, 4.0f, 6.0f);
         Vec3 centerOffset(0.0f, 2.0f, 0.0f);
         collider.set(position + centerOffset, dinoSize);
 
-        if (isDead) return;
+        if (isDead && currentState == TrexState::Die) return;
 
         Vec3 direction = playerPos - position;
         direction.y = 0; // Ignore height (don't fly towards player)
 
         float dist = direction.length(direction);
 
-        if (dist < 20.0f) {
+        currentState = animManager.getState();
+
+        /*std::string dist_msg = "Trex distance from player: " + std::to_string(dist);
+        dist_msg += "\n";
+        OutputDebugStringA(dist_msg.c_str());*/
+        if (dist < 5.0f) {
+            animManager.changeState(TrexState::Attack);
+        }
+        else if (dist < 20.0f) {
             Vec3 dirNorm = direction.normalize();
 
             // Move Position
@@ -72,29 +97,26 @@ public:
 
             // Ensure Walk animation is playing
             // (If you have an 'Idle', you could switch to it in the 'else' block)
-            if (health <= health / 2) {
+            if (health <= max_health / 2) {
                 animManager.changeState(TrexState::Walk);
             }
             else {
                 animManager.changeState(TrexState::Run);
             }
         }
-        else if (dist < 5.0f) {
-            animManager.changeState(TrexState::Roar);
-        }
-        
         else {
-            TrexState current = animManager.getState();
+            
             // If not playing a one-shot animation go back to idle
-            bool isOneShot = (current == TrexState::Roar || current == TrexState::Attack || current == TrexState::Die);
+            bool isOneShot = (currentState == TrexState::Roar || currentState == TrexState::Attack || currentState == TrexState::Die);
             if (!isOneShot) {
                 animManager.changeState(TrexState::Idle);
             }
         }
 
-        animManager.update(dt);
+        std::string dist_msg = std::string("Trex state: ") + toString(currentState) + "\n";
+        OutputDebugStringA(dist_msg.c_str());
 
-        
+        animManager.update(dt);
     }
 
     void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* texMan) {
@@ -117,7 +139,10 @@ public:
     }
 
     void takeDamage(float amount) {
-        if (isDead) return;
+        if (isDead && currentState == TrexState::Die) return;
+        /*std::string dist_msg = "Trex heakth : " + std::to_string(health);
+        dist_msg += "\n";
+        OutputDebugStringA(dist_msg.c_str());*/
         health -= amount;
         if (health <= 0) {
             health = 0;
