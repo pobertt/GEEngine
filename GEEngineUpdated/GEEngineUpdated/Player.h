@@ -49,6 +49,11 @@ public:
     bool justFired = false; // Flag to signal a shot
     bool isFiring = false;
 
+    int currentAmmo;
+    int maxAmmo;
+    float fireRate;
+    float fireTimer;
+
     // PHYSICS VARIABLES
     float yVelocity = 0.0f;
     float gravity = -20.0f; // Downward acceleration
@@ -72,6 +77,10 @@ public:
         pitch = 0.0f;
         speed = 10.0f;
         sensitivity = 0.002f;
+        maxAmmo = 30;
+        currentAmmo = maxAmmo;
+        fireRate = 0.1f;
+        fireTimer = 0.0f;
         updateVectors();
 
         yVelocity = 0.0f;
@@ -106,38 +115,54 @@ public:
         input.walk = (win.keys['W'] || win.keys['A'] || win.keys['S'] || win.keys['D']);
         input.run = (input.walk && win.keys[VK_SHIFT]);
         input.ads = (GetAsyncKeyState(VK_RBUTTON) & 0x8000);
-        input.fire = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 
-        isFiring = input.fire;
+        // Check raw input for fire button
+        bool fireButton = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
+
+        fireTimer += dt; // Count up time
+        justFired = false;
+        isFiring = false;
+
+        // RELOAD
+        if (win.keys['R'] == 1) {
+            input.reload = true;
+            win.keys['R'] = 0;
+            currentAmmo = maxAmmo;
+        }
+
+        // FIRE
+        if (fireButton && currentAmmo > 0) {
+            if (fireTimer >= fireRate) {
+                isFiring = true;      
+                justFired = true;    
+                currentAmmo--;
+                fireTimer = 0.0f;
+
+                input.fire = true;
+            }
+        }
+        else {
+            input.fire = false;
+        }
 
         // Triggers
-        if (win.keys['R'] == 1) { input.reload = true; win.keys['R'] = 0; }
         if (win.keys['F'] == 1) { input.inspect = true; win.keys['F'] = 0; }
         if (win.keys['V'] == 1) { input.meleeAttack = true; win.keys['V'] = 0; }
 
-        static bool mouseReleased = true;
-        justFired = false;
-
-        if (input.fire) {
-            // Pick muzzle tip based on ADS state
+        // MUZZLE FLASH
+        if (justFired) {
             Vec3 tip;
             if (input.ads) {
-                // ADS: bring flash closer to sights and slightly adjust lateral/vertical offsets
                 tip = position + (forward * 4.0f) + (right * -0.2f) + (up * -0.5f);
-            } else {
-                // Hip-fire: original offsets
+            }
+            else {
                 tip = position + (forward * 4.0f) + (right * -0.6f) + (up * -0.9f);
             }
             flash.activate(tip);
 
-            if (mouseReleased) {
-                justFired = true;
-                playerAnim.changeState(PlayerState::Fire);
-                mouseReleased = false;
-            }
-        } else {
-            mouseReleased = true;
-            // Optional: flash.deactivate();
+            // Play fire animation
+            if (input.ads) playerAnim.changeState(PlayerState::ADSFire);
+            else playerAnim.changeState(PlayerState::Fire);
         }
 
         handleMouse(win);

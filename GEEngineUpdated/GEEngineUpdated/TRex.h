@@ -64,29 +64,33 @@ public:
     }
 
     void update(float dt, Window& win, Vec3 playerPos) {
-        // AI/logic later
+        if (isDead) {
+            // Ensure state is Die
+            if (currentState != TrexState::Die) {
+                animManager.changeState(TrexState::Die);
+            }
 
+            animManager.update(dt);
+
+            return;
+        }
 
         Vec3 dinoSize(2.0f, 4.0f, 6.0f);
         Vec3 centerOffset(0.0f, 2.0f, 0.0f);
         collider.set(position + centerOffset, dinoSize);
 
-        if (isDead && currentState == TrexState::Die) return;
-
         Vec3 direction = playerPos - position;
-        direction.y = 0; // Ignore height (don't fly towards player)
+        direction.y = 0;
 
         float dist = direction.length(direction);
 
         currentState = animManager.getState();
 
         if (attacking) {
-            // Keep current rotation (optional: face player)
-            // Block movement while attacking
             if (animInstance.animationFinished()) {
                 animInstance.resetAnimationTime();
                 attacking = false;
-                // Transition after attack based on distance and health
+                // Transition logic...
                 if (dist < 50.0f) {
                     animManager.changeState(health <= max_health / 2 ? TrexState::Walk : TrexState::Run);
                 }
@@ -96,17 +100,14 @@ public:
             }
         }
         else {
-            // Not attacking: decide behavior by distance
+            // Movement Logic
             if (dist < 10.0f) {
-                // Enter attack and stop moving
                 animManager.changeState(TrexState::Attack);
                 attacking = true;
-                // Face player when starting attack
                 Vec3 dirNorm = direction.normalize();
                 rotationY = atan2(dirNorm.x, dirNorm.z);
             }
             else if (dist < 50.0f) {
-                // Move toward player
                 Vec3 dirNorm = direction.normalize();
                 position = position + (dirNorm * speed * dt);
                 rotationY = atan2(dirNorm.x, dirNorm.z);
@@ -117,8 +118,9 @@ public:
             }
         }
 
-        std::string dist_msg = std::string("Trex state: ") + toString(currentState) + "\n";
-        OutputDebugStringA(dist_msg.c_str());
+        // Debug output
+        // std::string dist_msg = std::string("Trex state: ") + toString(currentState) + "\n";
+        // OutputDebugStringA(dist_msg.c_str());
 
         animManager.update(dt);
     }
@@ -143,21 +145,20 @@ public:
     }
 
     void takeDamage(float amount) {
-        if (isDead && currentState == TrexState::Die) return;
-        /*std::string dist_msg = "Trex heakth : " + std::to_string(health);
-        dist_msg += "\n";
-        OutputDebugStringA(dist_msg.c_str());*/
+        if (isDead) return;
+
         health -= amount;
+
         if (health <= 0) {
             health = 0;
-            
+            isDead = true; // Mark as dead immediately
             animManager.changeState(TrexState::Die);
-            if (animInstance.animationFinished()) {
-                isDead = true;
-            }
         }
         else {
-            animManager.changeState(TrexState::Roar); // React to hit
+            // Only flinch/roar if not already attacking or dying
+            if (currentState != TrexState::Attack) {
+                animManager.changeState(TrexState::Roar);
+            }
         }
     }
 };

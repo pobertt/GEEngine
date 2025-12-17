@@ -336,6 +336,8 @@ public:
 };
 
 
+
+
 class MuzzleFlash {
 public:
 	float lifeTime = 0.0f;
