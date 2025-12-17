@@ -128,21 +128,22 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
-		shaderName = "StaticModelUntextured";
-		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
+		shaders->load(core, "static", "Resources/Shaders/VSSkybox.hlsl", "Resources/Shaders/PS.hlsl");
+		shaderName = "static";
+		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
 	// draw function for spinning lights and pulsing triangle
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, Matrix& w)
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, Matrix& w)
 	{
 		Matrix cubeWorld;
 		core->beginRenderPass();
 
-		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "VP", &vp);
-		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "W", &w);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
+		shaders->updateTexturePS(core, "static", "tex", textureManager->find("SkyboxTex"));
 		shaders->apply(core, shaderName);
-		psos->bind(core, "StaticModelUntexturedPSO");
+		psos->bind(core, "staticPSO");
 		mesh.draw(core);
 	}
 };
@@ -207,22 +208,22 @@ public:
 		mesh.init(core, vertices, indices);
 
 		// Load the shaders
-		shaders->load(core, "StaticModelUntextured", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PSSolid.hlsl");
-		shaderName = "StaticModelUntextured";
-		psos->createPSO(core, "StaticModelUntexturedPSO", shaders->find("StaticModelUntextured")->vs, shaders->find("StaticModelUntextured")->ps, VertexLayoutCache::getStaticLayout());
+		shaders->load(core, "static", "Resources/Shaders/VSSkybox.hlsl", "Resources/Shaders/PS.hlsl");
+		shaderName = "static";
+		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
 	// draw function for spinning lights and pulsing triangle
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp)
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, Matrix& w)
 	{
 		Matrix cubeWorld;
-		cubeWorld.scaling(Vec3(20.0f, 20.0f, 20.0f));
 		core->beginRenderPass();
 
-		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "VP", &vp);
-		shaders->updateConstantVS("StaticModelUntextured", "staticMeshBuffer", "W", &cubeWorld);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "VP", &vp);
+		shaders->updateConstantVS("static", "staticMeshBuffer", "W", &w);
+		shaders->updateTexturePS(core, "static", "tex", textureManager->find("SkyboxTex"));
 		shaders->apply(core, shaderName);
-		psos->bind(core, "StaticModelUntexturedPSO");
+		psos->bind(core, "staticPSO");
 		mesh.draw(core);
 	}
 };
@@ -284,6 +285,7 @@ class InstancedModels {
 public:
 	InstancedMesh mesh;
 
+
 	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texturemanager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
 		mesh.init(core, filename, texturemanager, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ);
 		shaders->load(core, "instanced", "Resources/Shaders/VSInstanced.hlsl", "Resources/Shaders/PS.hlsl");
@@ -293,12 +295,44 @@ public:
 	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texturemanager, Matrix& vp, UINT numOfInstances) {
 		psos->bind(core, "instancedPSO");
 		shaders->updateConstantVS("instanced", "staticMeshBuffer", "VP", &vp);
-
+		
 
 		shaders->apply(core, "instanced");
 
 		mesh.draw(core, shaders, texturemanager, numOfInstances);
 	}
+};
+
+class InstancedTrees {
+public:
+	InstancedModels model;
+	float time = 0.0f;
+	float windStrength = 1.0f;
+	Vec3 windDir = Vec3(1.0f, 0.0f, 0.0f);
+
+	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
+		model.init(core, psos, shaders, textureManager, filename, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ);
+	}
+
+	void update(float dt) {
+		time += dt;
+
+		// Optional: Reset time periodically to keep numbers small (e.g., every 100 seconds)
+		if (time > 100.0f) time -= 100.0f;
+	}
+
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, UINT numOfInstances) {
+		shaders->updateConstantVS("instanced", "staticMeshBuffer", "Time", &time);
+
+		// 2. Send Wind Direction
+		shaders->updateConstantVS("instanced", "staticMeshBuffer", "WindDirection", &windDir);
+
+		// 3. Send Wind Strength
+		shaders->updateConstantVS("instanced", "staticMeshBuffer", "WindStrength", &windStrength);
+
+		model.draw(core, psos, shaders, textureManager, vp, numOfInstances);
+	}
+
 };
 
 

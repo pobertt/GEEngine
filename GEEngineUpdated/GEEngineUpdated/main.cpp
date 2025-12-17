@@ -6,8 +6,6 @@
 #include "Objects.h" 
 #include "Collision.h" 
 
-// [REMOVED DrawSolidBox Function]
-
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow) {
     Window win;
     win.initialize("Game Engine", 1024, 1024);
@@ -35,18 +33,16 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         true
     );
 
-    // [REMOVED SolidShader Loading] (It was only for debug boxes)
-
-
     // --- 2. LOAD ASSETS ---
     textureManager.loadTexture(&core, "MuzzleFlashTex", "Resources/Models/Textures/muzzleflash.png");
-    textureManager.loadTexture(&core, "GrassTexture", "Resources/Models/Textures/TX_Grass_Sets_01a_ALB.png");
-
+    textureManager.loadTexture(&core, "SkyboxTex", "Resources/Models/Textures/sky_map2.jpg");
 
     Plane floor; floor.init(&core, &psos, &shaders);
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
 
-    InstancedModels oakTrees;
+    Cube skyBox; skyBox.init(&core, &psos, &shaders);
+
+    InstancedTrees oakTrees;
     oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 20, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
 
     Player player;
@@ -70,6 +66,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     ammoMatrix.scaling(Vec3(5.0f, 5.0f, 5.0f));
     ammoMatrix.translation(Vec3(10, 0, 0));
 
+    Matrix skyboxM;
+    skyboxM.scaling(Vec3(125.0f, 125.0f, 125.0f));
+
     ShowCursor(FALSE);
 
     // --- 3. GAME LOOP ---
@@ -84,6 +83,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         trex.update(dt, win, player.position);
         tree.update(&shaders, treeMatrix);
         ammoBox.update(&shaders, ammoMatrix);
+        oakTrees.update(dt);
         player.handleShooting(trex);
 
         // Render Setup
@@ -102,10 +102,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 20);
         //should draw 5 of whatever model you put in 
 
+
+        // If your cube needs a transform, set it here similarly to planeM
+        //skyBox.draw(&core, &psos, &shaders, &textureManager, vp, skyboxM);
+        
+
         // Draw Solids
-        Matrix planeM; planeM.translation(Vec3(0, 0, 0));
+        Matrix planeM; planeM.translation(Vec3(0, 0, 0)); planeM.scaling(Vec3(50.0f, 50.0f, 50.0f));
         floor.draw(&core, &psos, &shaders, vp, planeM);
-        sphere.draw(&core, &psos, &shaders, vp);
+        sphere.draw(&core, &psos, &shaders, &textureManager, vp, planeM);
         tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
         ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
         trex.draw(&core, &psos, &shaders, vp, &textureManager);
