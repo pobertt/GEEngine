@@ -40,9 +40,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     Skybox skyBox; skyBox.init(&core, &psos, &shaders);
 
     InstancedTrees oakTrees;
-    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 200, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(0.01f, 0.01f, 0.01f));
+    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 50, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(0.01f, 0.01f, 0.01f));
     InstancedModels grassInstanced;
-    grassInstanced.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ammo_Boxes_01a.gem", 200, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(25.0f, 25.0f, 25.0f));
+    grassInstanced.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Grass_04g.gem", 50000, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(2.0f, 2.0f, 2.0f));
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -53,8 +53,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
     staticModel ammoBox;
     ammoBox.init(&core, &psos, &shaders, "Resources/Models/Ammo_Boxes_01a.gem", &textureManager);
-    staticModel grass;
-    grass.init(&core, &psos, &shaders, "Resources/Models/Grass_04g.gem", &textureManager);
 
     Matrix treeMatrix;
     treeMatrix.scaling(Vec3(0.01f, 0.01f, 0.01f));
@@ -110,8 +108,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             }
         }
         
-        //oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 200);
-        grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 200);
+        oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 50);
+        grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 50000);
 
         skyBox.draw(&core, &psos, &shaders, &textureManager, vp, player.position);
         
@@ -120,7 +118,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         Matrix planeM; planeM.translation(Vec3(0, 0, 0)); planeM.scaling(Vec3(50.0f, 50.0f, 50.0f));
         //floor.draw(&core, &psos, &shaders, vp, planeM);
         ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
-        grass.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
         trex.draw(&core, &psos, &shaders, vp, &textureManager);
         player.draw(&core, &psos, &shaders, vp, &textureManager);
 
