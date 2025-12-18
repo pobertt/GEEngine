@@ -163,7 +163,7 @@ public:
 		STATIC_VERTEX v;
 		v.pos = p;
 		v.normal = n;
-		v.tangent = Vec3(0, 0, 0); // For now
+		v.tangent = Vec3(0, 0, 0);
 		v.tu = tu;
 		v.tv = tv;
 		return v;
@@ -173,16 +173,16 @@ public:
 	{
 		std::vector<STATIC_VERTEX> vertices;
 
-		// Define the 8 corners of the cube
-		float s = 50.0f; // Make it big! (Skybox size)
-		Vec3 p0 = Vec3(-s, -s, -s); // Back Bottom Left
-		Vec3 p1 = Vec3(s, -s, -s); // Back Bottom Right
-		Vec3 p2 = Vec3(s, s, -s); // Back Top Right
-		Vec3 p3 = Vec3(-s, s, -s); // Back Top Left
-		Vec3 p4 = Vec3(-s, -s, s); // Front Bottom Left
-		Vec3 p5 = Vec3(s, -s, s); // Front Bottom Right
-		Vec3 p6 = Vec3(s, s, s); // Front Top Right
-		Vec3 p7 = Vec3(-s, s, s); // Front Top Left
+		// size
+		float s = 500.0f;
+		Vec3 p0 = Vec3(-s, -s, -s);
+		Vec3 p1 = Vec3(s, -s, -s);
+		Vec3 p2 = Vec3(s, s, -s); 
+		Vec3 p3 = Vec3(-s, s, -s);
+		Vec3 p4 = Vec3(-s, -s, s);
+		Vec3 p5 = Vec3(s, -s, s); 
+		Vec3 p6 = Vec3(s, s, s); 
+		Vec3 p7 = Vec3(-s, s, s); 
 
 		// UV Grid Steps (4 columns, 3 rows)
 		float u0 = 0.00f;
@@ -192,60 +192,51 @@ public:
 		float u4 = 1.00f;
 
 		float v0 = 0.00f;
-		float v1 = 1.0f / 3.0f; // ~0.333
-		float v2 = 2.0f / 3.0f; // ~0.666
+		float v1 = 1.0f / 3.0f;
+		float v2 = 2.0f / 3.0f;
 		float v3 = 1.00f;
 
-		// --- FACE 1: FRONT (Z+) ---
-		// Uses the Center grid (Column 1, Row 1)
-		// Mapping: TopLeft(u1, v1) -> BottomRight(u2, v2)
-		// Vertices: p7, p6, p5, p4 (TopLeft, TopRight, BotRight, BotLeft)
+		// FRONT (Z+)
 		vertices.push_back(addVertex(p4, Vec3(0, 0, 1), u1, v2)); // BotLeft
 		vertices.push_back(addVertex(p5, Vec3(0, 0, 1), u2, v2)); // BotRight
 		vertices.push_back(addVertex(p6, Vec3(0, 0, 1), u2, v1)); // TopRight
 		vertices.push_back(addVertex(p7, Vec3(0, 0, 1), u1, v1)); // TopLeft
 
-		// --- FACE 2: BACK (Z-) ---
-		// Uses the Rightmost grid (Column 3, Row 1)
+		// BACK (Z-)
 		vertices.push_back(addVertex(p1, Vec3(0, 0, -1), u3, v2)); // BotLeft
 		vertices.push_back(addVertex(p0, Vec3(0, 0, -1), u4, v2)); // BotRight
 		vertices.push_back(addVertex(p3, Vec3(0, 0, -1), u4, v1)); // TopRight
 		vertices.push_back(addVertex(p2, Vec3(0, 0, -1), u3, v1)); // TopLeft
 
-		// --- FACE 3: LEFT (X-) ---
-		// Uses the Leftmost grid (Column 0, Row 1)
+		// LEFT (X-) 
 		vertices.push_back(addVertex(p0, Vec3(-1, 0, 0), u0, v2)); // BotLeft
 		vertices.push_back(addVertex(p4, Vec3(-1, 0, 0), u1, v2)); // BotRight
 		vertices.push_back(addVertex(p7, Vec3(-1, 0, 0), u1, v1)); // TopRight
 		vertices.push_back(addVertex(p3, Vec3(-1, 0, 0), u0, v1)); // TopLeft
 
-		// --- FACE 4: RIGHT (X+) ---
-		// Uses the Right-Center grid (Column 2, Row 1)
+		// RIGHT (X+) 
 		vertices.push_back(addVertex(p5, Vec3(1, 0, 0), u2, v2)); // BotLeft
 		vertices.push_back(addVertex(p1, Vec3(1, 0, 0), u3, v2)); // BotRight
 		vertices.push_back(addVertex(p2, Vec3(1, 0, 0), u3, v1)); // TopRight
 		vertices.push_back(addVertex(p6, Vec3(1, 0, 0), u2, v1)); // TopLeft
 
-		// --- FACE 5: TOP (Y+) ---
-		// Uses the Top grid (Column 1, Row 0)
+		// TOP (Y+)
 		vertices.push_back(addVertex(p7, Vec3(0, 1, 0), u1, v1)); // BotLeft
 		vertices.push_back(addVertex(p6, Vec3(0, 1, 0), u2, v1)); // BotRight
 		vertices.push_back(addVertex(p2, Vec3(0, 1, 0), u2, v0)); // TopRight
 		vertices.push_back(addVertex(p3, Vec3(0, 1, 0), u1, v0)); // TopLeft
 
-		// --- FACE 6: BOTTOM (Y-) ---
-		// Uses the Bottom grid (Column 1, Row 2)
+		// BOTTOM (Y-)
 		vertices.push_back(addVertex(p4, Vec3(0, -1, 0), u1, v2)); // TopLeft (relative to texture)
 		vertices.push_back(addVertex(p5, Vec3(0, -1, 0), u2, v2)); // TopRight
 		vertices.push_back(addVertex(p1, Vec3(0, -1, 0), u2, v3)); // BotRight
 		vertices.push_back(addVertex(p0, Vec3(0, -1, 0), u1, v3)); // BotLeft
 
-		// INDICES: DOUBLE-SIDED (Draws both Inside and Outside)
+		// Draws both Inside and Outside
 		std::vector<unsigned int> indices;
 		for (int i = 0; i < 6; i++) {
 			unsigned int base = i * 4;
 
-			// 1. CLOCKWISE TRIANGLES (Visible from Outside)
 			indices.push_back(base + 0);
 			indices.push_back(base + 1);
 			indices.push_back(base + 2);
@@ -254,8 +245,6 @@ public:
 			indices.push_back(base + 2);
 			indices.push_back(base + 3);
 
-			// 2. COUNTER-CLOCKWISE TRIANGLES (Visible from Inside)
-			// We just flip the last two numbers
 			indices.push_back(base + 0);
 			indices.push_back(base + 2);
 			indices.push_back(base + 1);
@@ -273,8 +262,7 @@ public:
 		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
-	// draw function for spinning lights and pulsing triangle
-	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, Matrix& w, Vec3 playerPos)
+	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, Vec3 playerPos)
 	{
 		Matrix skyboxWorld;
 		skyboxWorld.identity();

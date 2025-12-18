@@ -66,9 +66,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     ammoMatrix.scaling(Vec3(25.0f, 25.0f, 25.0f));
     ammoMatrix.translation(Vec3(10, 0, 0));
 
-    Matrix skyboxM;
-    skyboxM.scaling(Vec3(125.0f, 125.0f, 125.0f));
-
     ShowCursor(FALSE);
 
     while (true) {
@@ -104,7 +101,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         // Player vs Instanced Trees
         for (const Vec3& treePos : treePositions) {
 
-            // Create a temporary collider for a specific tree
+            // Create collider for a specific tree
             BoundingBox treeCollider;
             treeCollider.min = treePos - treeSize;
             treeCollider.max = treePos + treeSize;
@@ -117,14 +114,14 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         }
         
         oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 200);
-        grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 20000);
+        grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 200);
 
-        skyBox.draw(&core, &psos, &shaders, &textureManager, vp, skyboxM, player.position);
+        skyBox.draw(&core, &psos, &shaders, &textureManager, vp, player.position);
         
 
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0)); planeM.scaling(Vec3(50.0f, 50.0f, 50.0f));
-        //floor.draw(&core, &psos, &shaders, vp, planeM);
+        floor.draw(&core, &psos, &shaders, vp, planeM);
         //sphere.draw(&core, &psos, &shaders, &textureManager, vp, planeM);
         tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
         ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
@@ -135,8 +132,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         // Draw Transparents / Effects
         player.drawFlash(&core, &psos, &shaders, vp, &textureManager);
 
-        // [REMOVED Debug Drawing Section]
-
         core.finishFrame();
     }
     core.flushGraphicsQueue();
@@ -144,11 +139,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
 // Things to do:
 // Add grass
-// Add a skylight
-// Add trex AI
-// Add trees into the level
-// Add collision
-// Bullets???
-// Muzzle flash???
-// Blood??? 
-// could i do shadows?
+// Update trex collision box rotation
+// Remove skybox line
+// Add floor
