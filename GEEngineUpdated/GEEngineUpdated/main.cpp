@@ -17,8 +17,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     PSOManager psos;
     TextureManager textureManager;
 
-    // --- 1. INIT SHADERS & PSOs ---
-
     // Static Shader
     shaders.load(&core, "static", "Resources/Shaders/VS.hlsl", "Resources/Shaders/PS.hlsl");
     psos.createPSO(&core, "staticPSO", shaders.find("static")->vs, shaders.find("static")->ps, VertexLayoutCache::getStaticLayout());
@@ -33,17 +31,18 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         true
     );
 
-    // --- 2. LOAD ASSETS ---
     textureManager.loadTexture(&core, "MuzzleFlashTex", "Resources/Models/Textures/muzzleflash.png");
     textureManager.loadTexture(&core, "SkyboxTex", "Resources/Models/Textures/sky_map.png");
 
     Plane floor; floor.init(&core, &psos, &shaders);
     Sphere sphere; sphere.init(&core, &psos, &shaders, 20, 20, 20);
 
-    Cube skyBox; skyBox.init(&core, &psos, &shaders);
+    Skybox skyBox; skyBox.init(&core, &psos, &shaders);
 
     InstancedTrees oakTrees;
-    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 20, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
+    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 200, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f);
+    InstancedModels grassInstanced;
+    grassInstanced.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ammo_Boxes_01a.gem", 200, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -59,11 +58,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     staticModel grass;
     grass.init(&core, &psos, &shaders, "Resources/Models/Grass_04g.gem", &textureManager);
 
-    // Define tree transform
     Matrix treeMatrix;
     treeMatrix.scaling(Vec3(0.01f, 0.01f, 0.01f));
     treeMatrix.translation(Vec3(5, 0, 0));
-    // Define ammo transform
+
     Matrix ammoMatrix;
     ammoMatrix.scaling(Vec3(25.0f, 25.0f, 25.0f));
     ammoMatrix.translation(Vec3(10, 0, 0));
@@ -73,7 +71,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
     ShowCursor(FALSE);
 
-    // --- 3. GAME LOOP ---
     while (true) {
         core.beginFrame();
         win.processMessages();
@@ -100,18 +97,34 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             player.position = player.position + resolution;
         }
 
+        const std::vector<Vec3>& treePositions = oakTrees.model.getPositions();
+
+        Vec3 treeSize(0.5f, 10.0f, 0.5f);
+
+        // Player vs Instanced Trees
+        for (const Vec3& treePos : treePositions) {
+
+            // Create a temporary collider for a specific tree
+            BoundingBox treeCollider;
+            treeCollider.min = treePos - treeSize;
+            treeCollider.max = treePos + treeSize;
+
+            Vec3 resolution;
+            if (Collision::CheckBoundingBox(player.collider, treeCollider, resolution)) {
+                // Push player out of this specific tree
+                player.position = player.position + resolution;
+            }
+        }
         
-        oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 20);
-        //should draw 5 of whatever model you put in 
+        oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 200);
+        grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 20000);
 
-
-        // If your cube needs a transform, set it here similarly to planeM
-        skyBox.draw(&core, &psos, &shaders, &textureManager, vp, skyboxM);
+        skyBox.draw(&core, &psos, &shaders, &textureManager, vp, skyboxM, player.position);
         
 
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0)); planeM.scaling(Vec3(50.0f, 50.0f, 50.0f));
-        floor.draw(&core, &psos, &shaders, vp, planeM);
+        //floor.draw(&core, &psos, &shaders, vp, planeM);
         //sphere.draw(&core, &psos, &shaders, &textureManager, vp, planeM);
         tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
         ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);

@@ -67,8 +67,6 @@ public:
         psos.insert({ name, pso });
     }
 
-   // In PSOManager class
-
     void createTransparentPSO(Core* core, std::string name, ID3DBlob* vs, ID3DBlob* ps, D3D12_INPUT_LAYOUT_DESC inputLayoutDesc, bool additive = false) {
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.InputLayout = inputLayoutDesc;

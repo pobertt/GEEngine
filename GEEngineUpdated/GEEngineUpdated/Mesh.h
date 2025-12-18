@@ -349,11 +349,19 @@ public:
 	}
 };
 
+struct InstanceData {
+	Vec3 position;
+	// other data like rotation, scale...
+};
 
 class InstancedMesh {
 public:
 	std::vector<Mesh*> meshes;
 	std::vector<std::string> texture_files;
+
+	std::vector<Vec3> cachedPositions;
+
+	const std::vector<Vec3>& getPositions() const { return cachedPositions; }
 
 	// Generate random instance transforms internally with minimum spacing in XZ
 	void init(Core* core, std::string file, TextureManager* texturemanager, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
@@ -391,6 +399,8 @@ public:
 				positions.push_back(Vec3(frand(rangeMinX, rangeMaxX), 0.0f, frand(rangeMinZ, rangeMaxZ)));
 			}
 		}
+
+		this->cachedPositions = positions;
 
 		for (int i = 0; i < gemmeshes.size(); i++) {
 			Mesh* mesh = new Mesh();
