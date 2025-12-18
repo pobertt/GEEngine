@@ -419,8 +419,8 @@ public:
 
 	const std::vector<Vec3>& getPositions() const { return modelPositions; }
 
-	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texturemanager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
-		mesh.init(core, filename, texturemanager, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ);
+	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* texturemanager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ, Vec3 scale) {
+		mesh.init(core, filename, texturemanager, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ, scale);
 
 		this->modelPositions = mesh.getPositions();
 		
@@ -432,7 +432,6 @@ public:
 		psos->bind(core, "instancedPSO");
 		shaders->updateConstantVS("instanced", "staticMeshBuffer", "VP", &vp);
 		
-
 		shaders->apply(core, "instanced");
 
 		mesh.draw(core, shaders, texturemanager, numOfInstances);
@@ -441,15 +440,22 @@ public:
 
 class InstancedTrees {
 public:
-	InstancedModels model;
+	InstancedMesh mesh;
 	float time = 0.0f;
 	float windStrength = 1.0f;
 	Vec3 windDir = Vec3(1.0f, 0.0f, 0.0f);
+	std::vector<Vec3> modelPositions;
 
+	const std::vector<Vec3>& getPositions() const { return modelPositions; }
 	BoundingBox collider;
 
-	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
-		model.init(core, psos, shaders, textureManager, filename, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ);
+	void init(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, std::string filename, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ, Vec3 scale) {
+		mesh.init(core, filename, textureManager, numOfInstances, minSpacing, rangeMinX, rangeMaxX, rangeMinZ, rangeMaxZ, scale);
+
+		this->modelPositions = mesh.getPositions();
+
+		shaders->load(core, "treeInstanced", "Resources/Shaders/VSTreesInstanced.hlsl", "Resources/Shaders/PS.hlsl");
+		psos->createPSO(core, "treeInstancedPSO", shaders->find("treeInstanced")->vs, shaders->find("treeInstanced")->ps, VertexLayoutCache::getInstancedLayout());
 	}
 
 	void update(float dt) {
@@ -460,13 +466,20 @@ public:
 	}
 
 	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, UINT numOfInstances) {
-		shaders->updateConstantVS("instanced", "staticMeshBuffer", "Time", &time);
+		psos->bind(core, "treeInstancedPSO");
+		shaders->updateConstantVS("treeInstanced", "staticMeshBuffer", "VP", &vp);
 
-		shaders->updateConstantVS("instanced", "staticMeshBuffer", "WindDirection", &windDir);
+		shaders->updateConstantVS("treeInstanced", "staticMeshBuffer", "Time", &time);
 
-		shaders->updateConstantVS("instanced", "staticMeshBuffer", "WindStrength", &windStrength);
+		shaders->updateConstantVS("treeInstanced", "staticMeshBuffer", "WindDirection", &windDir);
 
-		model.draw(core, psos, shaders, textureManager, vp, numOfInstances);
+		shaders->updateConstantVS("treeInstanced", "staticMeshBuffer", "WindStrength", &windStrength);
+
+		
+
+		shaders->apply(core, "treeInstanced");
+
+		mesh.draw(core, shaders, textureManager, numOfInstances);
 	}
 
 };

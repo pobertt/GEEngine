@@ -364,7 +364,7 @@ public:
 	const std::vector<Vec3>& getPositions() const { return cachedPositions; }
 
 	// Generate random instance transforms internally with minimum spacing in XZ
-	void init(Core* core, std::string file, TextureManager* texturemanager, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ) {
+	void init(Core* core, std::string file, TextureManager* texturemanager, UINT numOfInstances, float minSpacing, float rangeMinX, float rangeMaxX, float rangeMinZ, float rangeMaxZ, Vec3 scale) {
 		GEMLoader::GEMModelLoader loader;
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		loader.load(file, gemmeshes);
@@ -416,7 +416,7 @@ public:
 			for (size_t k = 0; k < positions.size(); ++k) {
 				Matrix S, T;
 				S.identity();
-				S.scaling(Vec3(0.01f, 0.01f, 0.01f)); // keep your scale
+				S.scaling(scale); // keep your scale
 				T.identity();
 				T.translation(positions[k]);
 				instances[k].w = T.multiply(S);

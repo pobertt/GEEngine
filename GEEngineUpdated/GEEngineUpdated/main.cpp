@@ -40,9 +40,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     Skybox skyBox; skyBox.init(&core, &psos, &shaders);
 
     InstancedTrees oakTrees;
-    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 200, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f);
+    oakTrees.init(&core, &psos, &shaders, &textureManager, "Resources/Models/maple.gem", 200, 0.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(0.01f, 0.01f, 0.01f));
     InstancedModels grassInstanced;
-    grassInstanced.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ammo_Boxes_01a.gem", 200, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f);
+    grassInstanced.init(&core, &psos, &shaders, &textureManager, "Resources/Models/Ammo_Boxes_01a.gem", 200, 2.0f, -50.0f, 50.0f, -50.0f, 50.0f, Vec3(25.0f, 25.0f, 25.0f));
 
     Player player;
     player.init(&core, &psos, &shaders, &textureManager);
@@ -51,8 +51,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     TRex trex;
     trex.init(&core, &psos, &shaders, &textureManager);
 
-    staticModel tree;
-    tree.init(&core, &psos, &shaders, "Resources/Models/maple.gem", &textureManager);
     staticModel ammoBox;
     ammoBox.init(&core, &psos, &shaders, "Resources/Models/Ammo_Boxes_01a.gem", &textureManager);
     staticModel grass;
@@ -77,7 +75,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
         Matrix vp = player.update(win, dt);
 
         trex.update(dt, win, player.position);
-        tree.update(&shaders, treeMatrix);
         ammoBox.update(&shaders, ammoMatrix);
         oakTrees.update(dt);
         player.handleShooting(trex);
@@ -94,7 +91,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             player.position = player.position + resolution;
         }
 
-        const std::vector<Vec3>& treePositions = oakTrees.model.getPositions();
+        const std::vector<Vec3>& treePositions = oakTrees.mesh.getPositions();
 
         Vec3 treeSize(0.5f, 10.0f, 0.5f);
 
@@ -113,7 +110,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             }
         }
         
-        oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 200);
+        //oakTrees.draw(&core, &psos, &shaders, &textureManager, vp, 200);
         grassInstanced.draw(&core, &psos, &shaders, &textureManager, vp, 200);
 
         skyBox.draw(&core, &psos, &shaders, &textureManager, vp, player.position);
@@ -121,9 +118,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 
         // Draw Solids
         Matrix planeM; planeM.translation(Vec3(0, 0, 0)); planeM.scaling(Vec3(50.0f, 50.0f, 50.0f));
-        floor.draw(&core, &psos, &shaders, vp, planeM);
-        //sphere.draw(&core, &psos, &shaders, &textureManager, vp, planeM);
-        tree.draw(&core, &psos, &shaders, vp, treeMatrix, &textureManager);
+        //floor.draw(&core, &psos, &shaders, vp, planeM);
         ammoBox.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
         grass.draw(&core, &psos, &shaders, vp, ammoMatrix, &textureManager);
         trex.draw(&core, &psos, &shaders, vp, &textureManager);
