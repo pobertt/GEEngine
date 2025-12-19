@@ -99,13 +99,13 @@ public:
         rtBlend.LogicOpEnable = FALSE;
 
         if (additive) {
-            // --- ADDITIVE BLENDING (Glowing / Fire) ---
+            // Glowing / Fire (muzzle flash)
             rtBlend.SrcBlend = D3D12_BLEND_ONE;
             rtBlend.DestBlend = D3D12_BLEND_ONE;
             rtBlend.BlendOp = D3D12_BLEND_OP_ADD;
         }
         else {
-            // --- NORMAL ALPHA BLENDING (Glass / Windows) ---
+            // Glass / Windows (gun sight)
             rtBlend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
             rtBlend.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
             rtBlend.BlendOp = D3D12_BLEND_OP_ADD;

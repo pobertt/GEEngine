@@ -369,34 +369,55 @@ public:
 		std::vector<GEMLoader::GEMMesh> gemmeshes;
 		loader.load(file, gemmeshes);
 
-		// Simple RNG
+		// RNG
 		auto frand = [](float a, float b) {
 			return a + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (b - a);
 		};
 
-		// Generate positions with rejection sampling to enforce spacing in XZ
 		std::vector<Vec3> positions;
 		positions.reserve(numOfInstances);
-		const int maxAttemptsPerInstance = 1000;
-		for (UINT n = 0; n < numOfInstances; ++n) {
-			bool placed = false;
-			for (int attempt = 0; attempt < maxAttemptsPerInstance && !placed; ++attempt) {
+
+		// Try 1000 times to find a free spot for each model
+		const int maxAttempts = 1000;
+
+		for (UINT i = 0; i < numOfInstances; ++i) {
+			bool foundValidSpot = false;
+
+			for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+				// Pick a random spot
 				float x = frand(rangeMinX, rangeMaxX);
 				float z = frand(rangeMinZ, rangeMaxZ);
 				Vec3 candidate(x, 0.0f, z);
 
-				bool ok = true;
-				for (const auto& p : positions) {
-					float dx = candidate.x - p.x;
-					float dz = candidate.z - p.z;
-					float dist2 = dx * dx + dz * dz;
-					if (dist2 < (minSpacing * minSpacing)) { ok = false; break; }
+				// Check if this spot is too close to any existing tree
+				bool collision = false;
+				for (const auto& existingTree : positions) {
+					float diffX = candidate.x - existingTree.x;
+					float diffZ = candidate.z - existingTree.z;
+
+					// Compare squared distancess
+					float distanceSquared = (diffX * diffX) + (diffZ * diffZ);
+					float minSpacingSquared = minSpacing * minSpacing;
+
+					if (distanceSquared < minSpacingSquared) {
+						collision = true;
+						break; // bad spot
+					}
 				}
-				if (ok) { positions.push_back(candidate); placed = true; }
+
+				// If no collision, save this position
+				if (!collision) {
+					positions.push_back(candidate);
+					foundValidSpot = true;
+					break; // Move on to the next tree
+				}
 			}
-			// If we can't place respecting spacing, relax: place anyway to avoid infinite loop.
-			if (!placed) {
-				positions.push_back(Vec3(frand(rangeMinX, rangeMaxX), 0.0f, frand(rangeMinZ, rangeMaxZ)));
+
+			// If we couldn't find a spot after 1000 tries, place it randomly anyway
+			if (!foundValidSpot) {
+				float x = frand(rangeMinX, rangeMaxX);
+				float z = frand(rangeMinZ, rangeMaxZ);
+				positions.push_back(Vec3(x, 0.0f, z));
 			}
 		}
 
@@ -416,7 +437,7 @@ public:
 			for (size_t k = 0; k < positions.size(); ++k) {
 				Matrix S, T;
 				S.identity();
-				S.scaling(scale); // keep your scale
+				S.scaling(scale);
 				T.identity();
 				T.translation(positions[k]);
 				instances[k].w = T.multiply(S);

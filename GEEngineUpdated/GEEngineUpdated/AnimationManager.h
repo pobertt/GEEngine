@@ -2,7 +2,7 @@
 #include <string>
 #include <map>
 #include <windows.h>
-#include "Objects.h" // Includes your Animation.h
+#include "Objects.h" 
 
 struct AnimInfo {
     std::string name;
@@ -48,19 +48,11 @@ public:
             if (currentAnim.loops) {
                 animInstance->resetAnimationTime();
             }
-            // If NOT looping, we do nothing. The TRex class handles it.
+            // If NOT looping, we do nothing.
         }
     }
 
     StateEnum getState() {
         return currentState;
-    }
-
-    bool AnimationFinished() {
-        AnimInfo& currentAnim = config[currentState];
-        if (currentAnim.loops) return false;
-
-        // Use Animation.h method
-        return animInstance->animationFinished();
     }
 };

@@ -282,12 +282,10 @@ public:
 class Sphere
 {
 public:
-	// Create instance of mesh
 	Mesh mesh;
 	std::string shaderName;
 
 
-	// Helper function for plane
 	STATIC_VERTEX addVertex(Vec3 p, Vec3 n, float tu, float tv)
 	{
 		STATIC_VERTEX v;
@@ -299,7 +297,6 @@ public:
 		return v;
 	}
 
-	// Implement plane, 2 triangles
 	void init(Core* core, PSOManager* psos, Shaders* shaders, int rings, int segments, float radius)
 	{
 		std::vector<STATIC_VERTEX> vertices;
@@ -344,7 +341,6 @@ public:
 		psos->createPSO(core, "staticPSO", shaders->find("static")->vs, shaders->find("static")->ps, VertexLayoutCache::getStaticLayout());
 	}
 
-	// draw function for spinning lights and pulsing triangle
 	void draw(Core* core, PSOManager* psos, Shaders* shaders, TextureManager* textureManager, Matrix& vp, Matrix& w)
 	{
 		Matrix cubeWorld;
@@ -487,13 +483,12 @@ public:
 class MuzzleFlash {
 public:
 	float lifeTime = 0.0f;
-	float maxLife = 0.05f; // Flash lasts 0.05 seconds
+	float maxLife = 0.05f;
 	bool active = false;
 
-	// We reuse your existing Plane mesh for the billboard
+	// Use Plane mesh for the billboard
 	Plane* planeMesh = nullptr;
 
-	// Transform
 	Vec3 position;
 	float scale = 0.15f;
 	float randomRotation = 0.0f;
@@ -537,7 +532,7 @@ public:
 		rot.a[1][0] = up.x;    rot.a[1][1] = up.y;    rot.a[1][2] = up.z;
 		rot.a[2][0] = normal.x; rot.a[2][1] = normal.y; rot.a[2][2] = normal.z;
 
-		// Apply Random Roll (Z-Rotation) to the billboard itself for variety
+		// Apply random Z-Rotation to the billboard 
 		Matrix roll;
 		roll.rotAroundZ(randomRotation);
 		rot = roll.multiply(rot);

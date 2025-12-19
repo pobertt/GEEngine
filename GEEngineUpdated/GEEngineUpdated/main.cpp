@@ -89,11 +89,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
             player.position = player.position + resolution;
         }
 
+        // Player vs Instanced Trees
         const std::vector<Vec3>& treePositions = oakTrees.mesh.getPositions();
-
         Vec3 treeSize(0.5f, 10.0f, 0.5f);
 
-        // Player vs Instanced Trees
         for (const Vec3& treePos : treePositions) {
 
             // Create collider for a specific tree
@@ -134,3 +133,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
 // Update trex collision box rotation
 // Remove skybox line
 // Add floor
+
+
+//Collision.h

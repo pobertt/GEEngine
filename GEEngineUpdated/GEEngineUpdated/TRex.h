@@ -90,9 +90,13 @@ public:
             if (animInstance.animationFinished()) {
                 animInstance.resetAnimationTime();
                 attacking = false;
-                // Transition logic...
                 if (dist < 50.0f) {
-                    animManager.changeState(health <= max_health / 2 ? TrexState::Walk : TrexState::Run);
+                    if (health <= max_health) {
+                        animManager.changeState(TrexState::Walk);
+                    }
+                    else {
+                        animManager.changeState(TrexState::Run);
+                    }
                 }
                 else {
                     animManager.changeState(TrexState::Idle);
@@ -111,7 +115,12 @@ public:
                 Vec3 dirNorm = direction.normalize();
                 position = position + (dirNorm * speed * dt);
                 rotationY = atan2(dirNorm.x, dirNorm.z);
-                animManager.changeState(health <= max_health / 2 ? TrexState::Walk : TrexState::Run);
+                if (health <= max_health) {
+                    animManager.changeState(TrexState::Walk);
+                }
+                else {
+                    animManager.changeState(TrexState::Run);
+                }
             }
             else {
                 animManager.changeState(TrexState::Idle);

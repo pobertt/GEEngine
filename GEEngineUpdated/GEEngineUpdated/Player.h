@@ -46,7 +46,7 @@ public:
     float speed;
     float sensitivity;
 
-    bool justFired = false; // Flag to signal a shot
+    bool justFired = false; 
     bool isFiring = false;
 
     int currentAmmo;
@@ -56,9 +56,9 @@ public:
 
     // PHYSICS VARIABLES
     float yVelocity = 0.0f;
-    float gravity = -20.0f; // Downward acceleration
+    float gravity = -20.0f;
     float jumpForce = 8.0f;
-    bool isGrounded = false; // Track if we are on the floor
+    bool isGrounded = false; 
 
     // Animation / Model Data
     animatedModel gunModel;
@@ -119,7 +119,7 @@ public:
         // Check raw input for fire button
         bool fireButton = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 
-        fireTimer += dt; // Count up time
+        fireTimer += dt;
         justFired = false;
         isFiring = false;
 
@@ -197,7 +197,7 @@ public:
         playerAnim.update(dt);
         flash.update(dt);
 
-        // Return ViewProjection Matrix
+        // ViewProjection Matrix
         float aspect = (float)win.width / (float)win.height;
         Matrix projection, view;
         projection = projection.perspectiveProjection(aspect, 60.0f, 0.1f, 1000.0f);
@@ -206,7 +206,7 @@ public:
         return projection.multiply(view);
     }
 
-    // Continuous shooting: call this each frame with the target you want to test
+    // Continuous shooting
     void handleShooting(TRex& target) {
         if (isFiring) {
             Vec3 eyePos = position + Vec3(0.0f, 2.0f, 0.0f);
@@ -221,8 +221,6 @@ public:
                 }
             }
 
-            // Refresh tip each frame while firing (ADS-aware)
-            // If you also support ADS here, read current ADS state via GetAsyncKeyState
             bool ads = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
             Vec3 tip = ads
                 ? position + (forward * 4.0f) + (right * -0.2f) + (up * -0.5f)
@@ -233,11 +231,6 @@ public:
         if (!isFiring) {
             justFired = false;
         }
-    }
-
-    // Add this to your update()
-    void updateFlash(float dt) {
-        flash.update(dt);
     }
 
     void draw(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* textureManager) {
@@ -258,7 +251,6 @@ public:
     }
 
     void drawFlash(Core* core, PSOManager* psos, Shaders* shaders, Matrix& vp, TextureManager* tm) {
-        // Pass 'position' so the billboard knows where the camera is
         flash.draw(core, psos, shaders, vp, tm, position);
     }
     
