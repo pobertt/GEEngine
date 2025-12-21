@@ -127,12 +127,3 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nC
     }
     core.flushGraphicsQueue();
 }
-
-// Things to do:
-// Add grass
-// Update trex collision box rotation
-// Remove skybox line
-// Add floor
-
-
-//Collision.h

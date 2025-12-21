@@ -109,7 +109,7 @@ public:
         tMin = max(tMin, min(t1, t2));
         tMax = min(tMax, max(t1, t2));
 
-        // [Slide 21] Collision exists if max >= min and the hit is in front of us
+        // Collision exists if max >= min and the hit is in front of us
         if (tMax >= tMin && tMax > 0) {
             t = tMin; // Return distance to impact
             return true;
